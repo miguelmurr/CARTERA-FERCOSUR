@@ -321,7 +321,13 @@
                     
                     isFirebaseActive = true;
                     updateDBStatus(true, "Conectado a Firestore");
+                    
+                    // Intentamos cargar datos, pero si está vacío liberamos la interfaz
                     await loadPortfolioFromFirebase();
+                    
+                    // Forzamos que se oculte el cargador por si la base de datos no tenía registros
+                    document.getElementById('initial-loader').classList.add('hidden');
+                    document.getElementById('main-content').classList.remove('hidden');
                 } else {
                     // Cargar modo simulación local si no hay Firebase configurado
                     updateDBStatus(false, "Modo Demostración Local");
