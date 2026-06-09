@@ -283,19 +283,14 @@
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'cartera-fercosur-app';
         let firebaseConfig;
         
-        try {
-            firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-                apiKey: "dummy-api-key",
-                authDomain: "dummy-auth-domain",
-                projectId: "dummy-project-id",
-                storageBucket: "dummy-storage-bucket",
-                messagingSenderId: "dummy-messaging-id",
-                appId: "dummy-app-id"
-            };
-        } catch(e) {
-            console.warn("Configuración de Firebase no proveída por entorno. Usando mock local.");
-            firebaseConfig = { apiKey: "dummy-api-key" };
-        }
+       const firebaseConfig = {
+    apiKey: "AIzaSyCcyv87h6utB0UxUuU-JYdSrN0v0NfTHkQ",
+    authDomain: "cartera-fercosur.firebaseapp.com",
+    projectId: "cartera-fercosur",
+    storageBucket: "cartera-fercosur.firebasestorage.app",
+    messagingSenderId: "252598083919",
+    appId: "1:252598083919:web:e21875d0b561a31685a53a"
+  };
 
         // Inicializando servicios Firebase
         let app, db, auth;
