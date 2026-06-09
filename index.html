@@ -461,13 +461,15 @@
                     return false;
                 }
 
-                // Filtro por búsqueda global (Cliente, NIT o Factura)
+                // Filtro por búsqueda global (Cliente, NIT, Factura, Población o Teléfono)
                 if (searchQuery) {
                     const clientMatch = item.cliente ? item.cliente.toLowerCase().includes(searchQuery) : false;
                     const nitMatch = item.nit ? item.nit.toString().includes(searchQuery) : false;
                     const invoiceMatch = item.factura ? item.factura.toLowerCase().includes(searchQuery) : false;
+                    const ciudadMatch = item.ciudad ? item.ciudad.toLowerCase().includes(searchQuery) : false;
+                    const celularMatch = item.celular ? item.celular.toString().includes(searchQuery) : false;
                     
-                    return clientMatch || nitMatch || invoiceMatch;
+                    return clientMatch || nitMatch || invoiceMatch || ciudadMatch || celularMatch;
                 }
 
                 return true;
@@ -521,7 +523,10 @@
                 tr.innerHTML = `
                     <td class="py-4 px-4">
                         <div class="font-bold text-slate-800 leading-tight">${item.cliente || 'CLIENTE S.N.'}</div>
-                        <div class="text-xs text-slate-400 mt-0.5">NIT: ${item.nit || 'Sin registro'}</div>
+                        <div class="text-xs text-slate-400 mt-0.5 flex flex-col gap-0.5">
+                            <span><strong>NIT:</strong> ${item.nit || 'Sin registro'}</span>
+                            <span class="text-indigo-600 font-medium"><i class="fa-solid fa-location-dot text-[10px] mr-1"></i>${item.ciudad || 'No especificada'}</span>
+                        </div>
                     </td>
                     <td class="py-4 px-4 font-semibold text-slate-700">
                         ${item.factura || 'Factura N/A'}
@@ -584,17 +589,20 @@
                     return;
                 }
 
-                // Mapear los nombres de columna comunes de forma flexible
+                // Mapear los nombres de columna exactos de tu nuevo formato Excel
                 tempExcelData = jsonData.map(row => {
-                    // Buscar coincidencia de columnas sin importar mayúsculas/minúsculas o espacios
+                    // Regla inteligente para teléfonos: si Celular está vacío, usa Telefono
+                    let celularDetectado = row['Celular'] || row['Telefono'] || "";
+                    
                     return {
-                        cliente: findValueInRow(row, ['cliente', 'nombre', 'razon social']),
-                        nit: findValueInRow(row, ['nit', 'id', 'cedula', 'identificacion']),
-                        factura: findValueInRow(row, ['factura', 'doc', 'documento', 'nro factura']),
-                        valor: cleanNumberValue(findValueInRow(row, ['valor', 'saldo', 'total', 'cartera'])),
-                        vence: formatDateValue(findValueInRow(row, ['vence', 'vencimiento', 'fecha vence'])),
-                        celular: findValueInRow(row, ['celular', 'telefono', 'tel', 'whatsapp']),
-                        vendedor: findValueInRow(row, ['vendedor', 'vendedor_nombre', 'asesor'])
+                        cliente: row['Nombre tercero'] || "",
+                        nit: row['Nit'] || "",
+                        factura: row['Numero'] || "",
+                        valor: cleanNumberValue(row['Saldo']),
+                        vence: formatDateValue(row['Fecha vencimiento']),
+                        celular: celularDetectado,
+                        vendedor: row['Vendedor'] || "",
+                        ciudad: row['Ciudad'] || "" // Guardamos la población en la memoria
                     };
                 });
 
