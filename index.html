@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cartera Fercosur</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js" crossorigin="anonymous"></script>
+    <!-- Librería para leer archivos Excel directamente en el navegador -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Personalización de scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Cabecera de la Aplicación -->
+    <header class="bg-gradient-to-r from-blue-800 to-indigo-900 text-white shadow-md sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 py-3 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-white text-blue-900 p-2 rounded-lg font-black text-xl tracking-wider shadow-inner">
+                    FS
+                </div>
+                <div>
+                    <h1 class="text-xl font-extrabold tracking-tight">FERCOSUR</h1>
+                    <p class="text-xs text-blue-200 font-medium">Gestión Integrada de Cartera</p>
+                </div>
+            </div>
+            
+            <!-- Estado de conexión Firebase -->
+            <div class="flex items-center gap-3 bg-blue-950/40 px-3 py-1.5 rounded-full border border-blue-700/50 text-xs">
+                <span class="relative flex h-2.5 w-2.5">
+                    <span id="db-pulse" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                    <span id="db-dot" class="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+                </span>
+                <span id="db-status-text" class="font-medium text-slate-300">Conectando a base de datos...</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 py-6 sm:px-6 lg:px-8 flex flex-col gap-6">
+        
+        <!-- Alertas y Notificaciones flotantes internas -->
+        <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full"></div>
+
+        <!-- Vista de Carga / Inicialización -->
+        <div id="initial-loader" class="flex flex-col items-center justify-center py-20 bg-white rounded-2xl shadow-sm border border-slate-100">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
+            <p class="text-slate-500 font-medium">Cargando base de datos e interfaz de cartera...</p>
+        </div>
+
+        <!-- Contenedor Principal de la App (Oculto hasta que cargue) -->
+        <div id="main-content" class="hidden flex flex-col gap-6">
+            
+            <!-- Sección de Cartera y Consultas -->
+            <section class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col gap-6">
+                
+                <!-- Tarjetas de Estadísticas (Movidas justo arriba de la Visualización) -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100/80 flex items-center gap-4">
+                        <div class="p-3 bg-blue-50 text-blue-600 rounded-xl">
+                            <i class="fa-solid fa-file-invoice-dollar text-2xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Cartera Total</p>
+                            <h3 id="stat-total-cartera" class="text-xl font-bold text-slate-800">$0</h3>
+                            <p id="stat-total-count" class="text-xs text-slate-500 font-medium">0 facturas registradas</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100/80 flex items-center gap-4">
+                        <div class="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
+                            <i class="fa-solid fa-users text-2xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Clientes Activos</p>
+                            <h3 id="stat-total-clientes" class="text-xl font-bold text-slate-800">0</h3>
+                            <p class="text-xs text-emerald-600 font-medium"><i class="fa-solid fa-circle text-[8px] mr-1"></i>En base de datos</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100/80 flex items-center gap-4">
+                        <div class="p-3 bg-rose-50 text-rose-600 rounded-xl">
+                            <i class="fa-solid fa-calendar-minus text-2xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Cartera Vencida</p>
+                            <h3 id="stat-vencida-cartera" class="text-xl font-bold text-rose-600">$0</h3>
+                            <p id="stat-vencida-count" class="text-xs text-rose-500 font-medium">0 facturas en mora</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100/80 flex items-center gap-4">
+                        <div class="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
+                            <i class="fa-solid fa-user-tie text-2xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Vendedores</p>
+                            <h3 id="stat-vendedores" class="text-xl font-bold text-slate-800">0</h3>
+                            <p class="text-xs text-slate-500 font-medium">Con cartera asignada</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Barra informativa de confirmación para subir a Firebase (Solo aparece cuando cargas un Excel) -->
+                <div id="upload-action-bar" class="hidden flex flex-col sm:flex-row items-center justify-between p-4 bg-amber-50 rounded-2xl border border-amber-200 gap-4">
+                    <div class="flex items-center gap-3">
+                        <div class="h-10 w-10 bg-amber-100 text-amber-700 rounded-xl flex items-center justify-center">
+                            <i class="fa-solid fa-file-excel text-lg"></i>
+                        </div>
+                        <div>
+                            <h5 class="text-sm font-bold text-amber-900" id="uploaded-filename">nombre_archivo.xlsx</h5>
+                            <p class="text-xs text-amber-700" id="uploaded-summary">Se encontraron 0 filas listas para procesar.</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-2 w-full sm:w-auto">
+                        <button onclick="cancelUpload()" class="flex-1 sm:flex-initial px-4 py-2 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 transition-all">
+                            Cancelar
+                        </button>
+                        <button id="btn-save-firebase" onclick="savePortfolioToFirebase()" class="flex-1 sm:flex-initial px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-md transition-all flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-cloud-arrow-up"></i> Guardar en Firebase
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Barra de búsqueda y filtros -->
+                <div class="flex flex-col lg:flex-row gap-4 justify-between items-center border-t border-slate-100 pt-6">
+                    <div>
+                        <h3 class="text-base font-bold text-slate-800">Filtros y Consultas rápidas</h3>
+                        <p class="text-xs text-slate-400">Busca por cliente o filtra por vendedor en tiempo real</p>
+                    </div>
+                    
+                    <div class="flex flex-col sm:flex-row gap-3 w-full lg:w-auto items-center">
+                        <!-- Buscador Global -->
+                        <div class="relative w-full sm:w-64">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                            <input type="text" id="search-input" oninput="applyFilters()" placeholder="Buscar cliente, NIT o factura..." class="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all">
+                        </div>
+
+                        <!-- Filtro Vendedor -->
+                        <div class="relative w-full sm:w-52">
+                            <i class="fa-solid fa-filter absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                            <select id="vendedor-select" onchange="applyFilters()" class="w-full pl-10 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none cursor-pointer">
+                                <option value="todos">Todos los Vendedores</option>
+                            </select>
+                            <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-[10px] pointer-events-none"></i>
+                        </div>
+
+                        <!-- Botón Pequeño de Excel para Carga Rápida -->
+                        <button onclick="document.getElementById('excel-file').click()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl flex items-center justify-center gap-2 text-xs font-bold shadow-sm transition-all w-full sm:w-auto" title="Subir nuevo reporte diario Excel">
+                            <i class="fa-solid fa-file-excel text-base"></i>
+                            <span>Cargar Excel</span>
+                        </button>
+                        <input type="file" id="excel-file" accept=".xlsx, .xls, .csv" class="hidden" />
+                    </div>
+                </div>
+
+                <!-- Tabla de datos de cartera -->
+                <div class="overflow-x-auto rounded-xl border border-slate-100">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 text-slate-500 text-xs font-semibold uppercase tracking-wider border-b border-slate-100">
+                                <th class="py-3.5 px-4">Cliente / ID</th>
+                                <th class="py-3.5 px-4">Factura / Doc</th>
+                                <th class="py-3.5 px-4 text-right">Valor Cartera</th>
+                                <th class="py-3.5 px-4">Vence / Estado</th>
+                                <th class="py-3.5 px-4">Vendedor</th>
+                                <th class="py-3.5 px-4 text-center">Gestión</th>
+                            </tr>
+                        </thead>
+                        <tbody id="portfolio-table-body" class="divide-y divide-slate-100 text-sm text-slate-600">
+                            <!-- Los datos cargados se renderizarán aquí -->
+                            <tr>
+                                <td colspan="6" class="text-center py-12 text-slate-400">
+                                    <div class="flex flex-col items-center justify-center gap-2">
+                                        <i class="fa-solid fa-folder-open text-3xl text-slate-300"></i>
+                                        <p class="font-medium text-xs">No hay registros de cartera. Carga un archivo Excel arriba.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Paginación de tabla -->
+                <div class="flex flex-col sm:flex-row justify-between items-center border-t border-slate-100 pt-4 gap-4 text-xs">
+                    <p id="table-pagination-info" class="text-slate-500 font-medium">Mostrando 0 de 0 registros</p>
+                    <div class="flex gap-2">
+                        <button id="btn-prev-page" onclick="changePage(-1)" class="px-3 py-1.5 border border-slate-200 rounded-lg hover:bg-slate-50 font-semibold disabled:opacity-50 disabled:pointer-events-none transition-all">Anterior</button>
+                        <button id="btn-next-page" onclick="changePage(1)" class="px-3 py-1.5 border border-slate-200 rounded-lg hover:bg-slate-50 font-semibold disabled:opacity-50 disabled:pointer-events-none transition-all">Siguiente</button>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Modal de Envío de WhatsApp (Preparación para Fase Futura) -->
+    <div id="whatsapp-modal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl border border-slate-100 max-w-lg w-full overflow-hidden animate-in fade-in duration-200">
+            <div class="bg-emerald-600 text-white p-5 flex justify-between items-center">
+                <div class="flex items-center gap-2.5">
+                    <i class="fa-brands fa-whatsapp text-2xl"></i>
+                    <div>
+                        <h4 class="font-bold text-base">Cobro WhatsApp Express</h4>
+                        <p class="text-xs text-emerald-100">Fase de Preparación de Seguimiento</p>
+                    </div>
+                </div>
+                <button onclick="closeWhatsAppModal()" class="h-8 w-8 rounded-full bg-emerald-700/50 hover:bg-emerald-700/80 flex items-center justify-center transition-colors">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <div class="p-6 flex flex-col gap-4">
+                <div class="grid grid-cols-2 gap-4 text-xs bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    <div>
+                        <span class="text-slate-400 block font-medium">CLIENTE</span>
+                        <strong id="modal-client-name" class="text-slate-700">Nombre del Cliente</strong>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 block font-medium">CELULAR</span>
+                        <strong id="modal-client-phone" class="text-slate-700">3000000000</strong>
+                    </div>
+                    <div class="mt-2">
+                        <span class="text-slate-400 block font-medium">FACTURA</span>
+                        <strong id="modal-client-invoice" class="text-slate-700">#N/A</strong>
+                    </div>
+                    <div class="mt-2">
+                        <span class="text-slate-400 block font-medium">VALOR EN MORA</span>
+                        <strong id="modal-client-value" class="text-emerald-700 text-sm">$0</strong>
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-2">
+                    <label class="text-xs font-bold text-slate-600 uppercase tracking-wider">Mensaje a Enviar</label>
+                    <textarea id="whatsapp-message-template" rows="5" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-slate-700 leading-relaxed"></textarea>
+                    <p class="text-[10px] text-slate-400">Puedes editar el mensaje libremente antes de enviar.</p>
+                </div>
+
+                <div class="flex gap-3 mt-2">
+                    <button onclick="closeWhatsAppModal()" class="flex-1 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold transition-all">
+                        Cancelar
+                    </button>
+                    <button onclick="sendWhatsAppMessage()" class="flex-1 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md transition-all flex items-center justify-center gap-2">
+                        <i class="fa-brands fa-whatsapp text-sm"></i> Lanzar WhatsApp
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pie de Página -->
+    <footer class="bg-slate-100 border-t border-slate-200 py-6 text-center text-xs text-slate-400 mt-12">
+        <p class="font-bold text-slate-500">&copy; 2026 CARTERA FERCOSUR. Todos los derechos reservados.</p>
+        <p class="mt-1">Diseñado para la eficiencia del equipo comercial y seguimiento de cobros.</p>
+    </footer>
+
+    <!-- Scripts de Firebase 11.6.1 con rutas estrictas y flujo recomendado -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, collection, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global variables y placeholders del Entorno Canvas
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'cartera-fercosur-app';
+        let firebaseConfig;
+        
+        try {
+            firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+                apiKey: "dummy-api-key",
+                authDomain: "dummy-auth-domain",
+                projectId: "dummy-project-id",
+                storageBucket: "dummy-storage-bucket",
+                messagingSenderId: "dummy-messaging-id",
+                appId: "dummy-app-id"
+            };
+        } catch(e) {
+            console.warn("Configuración de Firebase no proveída por entorno. Usando mock local.");
+            firebaseConfig = { apiKey: "dummy-api-key" };
+        }
+
+        // Inicializando servicios Firebase
+        let app, db, auth;
+        let isFirebaseActive = false;
+
+        // Estado interno de la Cartera en Memoria para consultas veloces y filtrado
+        let portfolioData = [];
+        let filteredData = [];
+        let vendorsList = new Set();
+        let currentPage = 1;
+        const rowsPerPage = 10;
+        let tempExcelData = []; // Datos del Excel cargado pendientes de guardar en Firebase
+
+        async function initApp() {
+            try {
+                // Iniciar Firebase si tiene valores reales
+                if (firebaseConfig.apiKey && firebaseConfig.apiKey !== "dummy-api-key") {
+                    app = initializeApp(firebaseConfig);
+                    db = getFirestore(app);
+                    auth = getAuth(app);
+
+                    // Regla de Oro: Autenticarse antes de cualquier consulta
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                    
+                    isFirebaseActive = true;
+                    updateDBStatus(true, "Conectado a Firestore");
+                    await loadPortfolioFromFirebase();
+                } else {
+                    // Cargar modo simulación local si no hay Firebase configurado
+                    updateDBStatus(false, "Modo Demostración Local");
+                    loadDemoData();
+                }
+            } catch (error) {
+                console.error("Error inicializando Firebase:", error);
+                showToast("Error de conexión. Iniciando en modo local offline.", "error");
+                updateDBStatus(false, "Error de Conexión / Modo de Pruebas");
+                loadDemoData();
+            } finally {
+                // Ocultar Loader inicial
+                document.getElementById('initial-loader').classList.add('hidden');
+                document.getElementById('main-content').classList.remove('hidden');
+            }
+        }
+
+        // Estado visual del status de Firebase en cabecera
+        function updateDBStatus(connected, message) {
+            const pulse = document.getElementById('db-pulse');
+            const dot = document.getElementById('db-dot');
+            const text = document.getElementById('db-status-text');
+
+            if (connected) {
+                pulse.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75";
+                dot.className = "relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500";
+            } else {
+                pulse.className = "absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75";
+                dot.className = "relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500";
+            }
+            text.innerText = message;
+        }
+
+        // Descargar todos los registros usando ruta estricta (Regla 1) y filtrado en JS (Regla 2)
+        async function loadPortfolioFromFirebase() {
+            if (!isFirebaseActive) return;
+            try {
+                // Ruta Estricta: /artifacts/{appId}/public/data/portfolio_records
+                const clientsColRef = collection(db, 'artifacts', appId, 'public', 'data', 'clients');
+                const querySnapshot = await getDocs(clientsColRef);
+                
+                const loadedData = [];
+                querySnapshot.forEach((doc) => {
+                    loadedData.push(doc.data());
+                });
+
+                if (loadedData.length > 0) {
+                    portfolioData = loadedData;
+                    showToast(`Sincronizados ${loadedData.length} registros desde la nube.`, "success");
+                } else {
+                    loadDemoData(); // Si está vacío, cargamos demo para no ver la página en blanco
+                    showToast("No se encontraron registros de cartera en la nube. Cargando datos demo.", "info");
+                }
+                
+                processAndRenderData();
+            } catch (error) {
+                console.error("Error cargando cartera de Firestore:", error);
+                showToast("Error al sincronizar con la nube. Cargando demo.", "error");
+                loadDemoData();
+            }
+        }
+
+        // Carga de datos de demostración si Firebase está vacío o inactivo
+        function loadDemoData() {
+            portfolioData = [
+                { cliente: "ALMACEN EL CONSTRUCTOR", nit: "900.123.456-1", factura: "FE-1025", valor: 2500000, vence: "2026-06-30", celular: "3101234567", vendedor: "Juan Pérez" },
+                { cliente: "DISTRIBUIDORA FERRETERA DEL SUR", nit: "890.321.654-2", factura: "FE-1089", valor: 4200000, vence: "2026-05-15", celular: "3159876543", vendedor: "María Gómez" },
+                { cliente: "CONSTRUCTORA FERCOSUR S.A.S", nit: "901.444.888-9", factura: "FE-1112", valor: 8900000, vence: "2026-06-15", celular: "3204561234", vendedor: "Juan Pérez" },
+                { cliente: "FERRETERIA LA CLAVE", nit: "12.345.678", factura: "FE-1201", valor: 1500000, vence: "2026-04-10", celular: "3007654321", vendedor: "Andrés Delgado" },
+                { cliente: "DEPOSITO DE MATERIALES EL PROGRESO", nit: "900.888.777-3", factura: "FE-1250", valor: 650000, vence: "2026-07-20", celular: "3112223344", vendedor: "María Gómez" }
+            ];
+            processAndRenderData();
+        }
+
+        // Genera sumatorias de cartera y carga los filtros de vendedores
+        function processAndRenderData() {
+            vendorsList.clear();
+            let total = 0;
+            let totalVencido = 0;
+            let morososCount = 0;
+            const uniqueClients = new Set();
+            const hoy = new Date();
+
+            portfolioData.forEach(item => {
+                // Normalizar valores monetarios
+                const val = parseFloat(item.valor) || 0;
+                total += val;
+
+                // Calcular días de mora
+                const fechaVence = new Date(item.vence);
+                const diferenciaTiempo = hoy.getTime() - fechaVence.getTime();
+                const diasMora = Math.floor(diferenciaTiempo / (1000 * 3600 * 24));
+                item.diasMora = diasMora > 0 ? diasMora : 0;
+
+                if (item.diasMora > 0) {
+                    totalVencido += val;
+                    morososCount++;
+                }
+
+                if (item.vendedor) {
+                    vendorsList.add(item.vendedor.trim());
+                }
+                
+                if (item.nit) {
+                    uniqueClients.add(item.nit);
+                }
+            });
+
+            // Actualizar tarjetas de estadísticas en pantalla
+            document.getElementById('stat-total-cartera').innerText = formatCurrency(total);
+            document.getElementById('stat-total-count').innerText = `${portfolioData.length} facturas registradas`;
+            document.getElementById('stat-vencida-cartera').innerText = formatCurrency(totalVencido);
+            document.getElementById('stat-vencida-count').innerText = `${morososCount} facturas vencidas`;
+            document.getElementById('stat-total-clientes').innerText = uniqueClients.size;
+            document.getElementById('stat-vendedores').innerText = vendorsList.size;
+
+            // Reconstruir selector de vendedores para filtro
+            const selectVendors = document.getElementById('vendedor-select');
+            selectVendors.innerHTML = '<option value="todos">Todos los Vendedores</option>';
+            Array.from(vendorsList).sort().forEach(vendor => {
+                const opt = document.createElement('option');
+                opt.value = vendor;
+                opt.innerText = vendor;
+                selectVendors.appendChild(opt);
+            });
+
+            applyFilters();
+        }
+
+        window.applyFilters = function() {
+            const searchQuery = document.getElementById('search-input').value.toLowerCase().trim();
+            const selectedVendor = document.getElementById('vendedor-select').value;
+
+            filteredData = portfolioData.filter(item => {
+                // Filtro por vendedor
+                if (selectedVendor !== 'todos' && item.vendedor !== selectedVendor) {
+                    return false;
+                }
+
+                // Filtro por búsqueda global (Cliente, NIT o Factura)
+                if (searchQuery) {
+                    const clientMatch = item.cliente ? item.cliente.toLowerCase().includes(searchQuery) : false;
+                    const nitMatch = item.nit ? item.nit.toString().includes(searchQuery) : false;
+                    const invoiceMatch = item.factura ? item.factura.toLowerCase().includes(searchQuery) : false;
+                    
+                    return clientMatch || nitMatch || invoiceMatch;
+                }
+
+                return true;
+            });
+
+            currentPage = 1;
+            renderTable();
+        };
+
+        function renderTable() {
+            const tableBody = document.getElementById('portfolio-table-body');
+            tableBody.innerHTML = '';
+
+            if (filteredData.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center py-12 text-slate-400">
+                            <div class="flex flex-col items-center justify-center gap-2">
+                                <i class="fa-solid fa-face-frown text-3xl text-slate-300"></i>
+                                <p class="font-medium text-xs">No se encontraron registros de cartera con los filtros aplicados.</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                document.getElementById('table-pagination-info').innerText = "Mostrando 0 de 0 registros";
+                document.getElementById('btn-prev-page').disabled = true;
+                document.getElementById('btn-next-page').disabled = true;
+                return;
+            }
+
+            // Cálculo de paginación
+            const startIndex = (currentPage - 1) * rowsPerPage;
+            const endIndex = Math.min(startIndex + rowsPerPage, filteredData.length);
+            const paginatedItems = filteredData.slice(startIndex, endIndex);
+
+            paginatedItems.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50/70 transition-colors";
+
+                // Formatear estado de vencimiento
+                let badgeClass = "";
+                let badgeText = "";
+                if (item.diasMora > 0) {
+                    badgeClass = "bg-rose-50 text-rose-700 border border-rose-100";
+                    badgeText = `Vencido (${item.diasMora} días)`;
+                } else {
+                    badgeClass = "bg-emerald-50 text-emerald-700 border border-emerald-100";
+                    badgeText = "Al día";
+                }
+
+                tr.innerHTML = `
+                    <td class="py-4 px-4">
+                        <div class="font-bold text-slate-800 leading-tight">${item.cliente || 'CLIENTE S.N.'}</div>
+                        <div class="text-xs text-slate-400 mt-0.5">NIT: ${item.nit || 'Sin registro'}</div>
+                    </td>
+                    <td class="py-4 px-4 font-semibold text-slate-700">
+                        ${item.factura || 'Factura N/A'}
+                    </td>
+                    <td class="py-4 px-4 text-right font-extrabold text-slate-800">
+                        ${formatCurrency(item.valor)}
+                    </td>
+                    <td class="py-4 px-4">
+                        <div class="text-xs font-semibold text-slate-500">${item.vence || '---'}</div>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold mt-1 ${badgeClass}">
+                            ${badgeText}
+                        </span>
+                    </td>
+                    <td class="py-4 px-4 font-medium text-slate-500 text-xs">
+                        ${item.vendedor || 'Sin asignar'}
+                    </td>
+                    <td class="py-4 px-4 text-center">
+                        <button onclick='openWhatsAppModal(${JSON.stringify(item)})' class="h-9 w-9 bg-emerald-50 hover:bg-emerald-600 text-emerald-600 hover:text-white rounded-xl flex items-center justify-center transition-all mx-auto shadow-sm" title="Enviar cobro por WhatsApp">
+                            <i class="fa-brands fa-whatsapp text-lg"></i>
+                        </button>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+
+            // Actualizar botones de paginación
+            document.getElementById('table-pagination-info').innerText = `Mostrando ${startIndex + 1} a ${endIndex} de ${filteredData.length} registros`;
+            document.getElementById('btn-prev-page').disabled = currentPage === 1;
+            document.getElementById('btn-next-page').disabled = endIndex >= filteredData.length;
+        }
+
+        window.changePage = function(direction) {
+            currentPage += direction;
+            renderTable();
+        };
+
+        // Detectar carga de archivos
+        const fileInput = document.getElementById('excel-file');
+
+        fileInput.addEventListener('change', handleExcelUpload);
+
+        function handleExcelUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                
+                // Procesamos la primera hoja
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                
+                // Convertir hoja de cálculo a formato JSON
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+                
+                if (jsonData.length === 0) {
+                    showToast("El archivo de Excel está vacío o no tiene el formato adecuado.", "error");
+                    return;
+                }
+
+                // Mapear los nombres de columna comunes de forma flexible
+                tempExcelData = jsonData.map(row => {
+                    // Buscar coincidencia de columnas sin importar mayúsculas/minúsculas o espacios
+                    return {
+                        cliente: findValueInRow(row, ['cliente', 'nombre', 'razon social']),
+                        nit: findValueInRow(row, ['nit', 'id', 'cedula', 'identificacion']),
+                        factura: findValueInRow(row, ['factura', 'doc', 'documento', 'nro factura']),
+                        valor: cleanNumberValue(findValueInRow(row, ['valor', 'saldo', 'total', 'cartera'])),
+                        vence: formatDateValue(findValueInRow(row, ['vence', 'vencimiento', 'fecha vence'])),
+                        celular: findValueInRow(row, ['celular', 'telefono', 'tel', 'whatsapp']),
+                        vendedor: findValueInRow(row, ['vendedor', 'vendedor_nombre', 'asesor'])
+                    };
+                });
+
+                // Mostrar barra de acción para que el usuario confirme si desea subirlo a Firebase
+                document.getElementById('uploaded-filename').innerText = file.name;
+                document.getElementById('uploaded-summary').innerText = `Se encontraron ${tempExcelData.length} registros. ¿Deseas subirlos y actualizar la base de datos de cartera en Firestore?`;
+                document.getElementById('upload-action-bar').classList.remove('hidden');
+                
+                showToast("Excel cargado correctamente. Confirma el guardado.", "info");
+            };
+            
+            reader.readAsArrayBuffer(file);
+        }
+
+        // Utilidades para normalizar los datos del excel
+        function findValueInRow(row, keys) {
+            const rowKeys = Object.keys(row);
+            for (let k of keys) {
+                const foundKey = rowKeys.find(rk => rk.toLowerCase().trim() === k.toLowerCase().trim());
+                if (foundKey) return row[foundKey];
+            }
+            return "";
+        }
+
+        function cleanNumberValue(val) {
+            if (typeof val === 'number') return val;
+            if (!val) return 0;
+            // Eliminar signos de moneda, comas o puntos de mil para convertir correctamente
+            return parseFloat(val.toString().replace(/[^0-9.-]+/g, "")) || 0;
+        }
+
+        function formatDateValue(val) {
+            if (!val) return "";
+            if (typeof val === 'number') {
+                // Es una fecha de tipo serial de Excel
+                const date = XLSX.utils.format_cell({ t: 'd', v: val });
+                return date ? date : "";
+            }
+            // Formatos de fecha clásicos
+            return val.toString();
+        }
+
+        window.cancelUpload = function() {
+            tempExcelData = [];
+            fileInput.value = '';
+            document.getElementById('upload-action-bar').classList.add('hidden');
+            showToast("Proceso de carga cancelado.", "info");
+        };
+
+        // Sigue la REGLA 1 (Ruta estricta) y sobreescribe los datos vigentes
+        window.savePortfolioToFirebase = async function() {
+            if (tempExcelData.length === 0) return;
+
+            const btnSave = document.getElementById('btn-save-firebase');
+            btnSave.disabled = true;
+            btnSave.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Guardando...`;
+
+            if (!isFirebaseActive) {
+                // Si no está Firebase configurado, actualizamos la memoria local
+                portfolioData = [...tempExcelData];
+                processAndRenderData();
+                showToast("Datos cargados exitosamente de forma local (Demostración).", "success");
+                cancelUpload();
+                btnSave.disabled = false;
+                btnSave.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> Guardar en Base de Datos`;
+                return;
+            }
+
+            try {
+                // Para guardar en lote, usamos Firebase writeBatch. 
+                // La ruta obligatoria: /artifacts/{appId}/public/data/clients/{docId}
+                const batch = writeBatch(db);
+                
+                // Para evitar exceso de almacenamiento, limitamos a procesar los primeros 300 registros en modo público por rendimiento, o guardamos el lote
+                const processLimit = Math.min(tempExcelData.length, 300);
+                
+                for (let i = 0; i < processLimit; i++) {
+                    const item = tempExcelData[i];
+                    // Creamos una clave única por cada registro (vendedor_cliente_factura) para evitar duplicados
+                    const recordId = `${item.vendedor || 'sin_asesor'}_${item.nit || 'sin_nit'}_${item.factura || 'sin_doc'}`.replace(/[\/.\s]/g, '_');
+                    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'clients', recordId);
+                    batch.set(docRef, item);
+                }
+
+                await batch.commit();
+                
+                portfolioData = tempExcelData;
+                processAndRenderData();
+                showToast(`¡Base de datos de Cartera actualizada con éxito! (${processLimit} registros)`, "success");
+                
+                cancelUpload();
+            } catch (error) {
+                console.error("Error guardando datos en Firestore:", error);
+                showToast("Ocurrió un error al guardar en Firestore. Inténtalo de nuevo.", "error");
+            } finally {
+                btnSave.disabled = false;
+                btnSave.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> Guardar en Base de Datos`;
+            }
+        };
+
+        let activeWhatsAppClient = null;
+
+        window.openWhatsAppModal = function(client) {
+            activeWhatsAppClient = client;
+            
+            document.getElementById('modal-client-name').innerText = client.cliente || 'CLIENTE S.N.';
+            document.getElementById('modal-client-phone').innerText = client.celular || '3000000000';
+            document.getElementById('modal-client-invoice').innerText = client.factura || 'FE-0000';
+            document.getElementById('modal-client-value').innerText = formatCurrency(client.valor);
+
+            // Plantilla de mensaje dinámica editable
+            const totalAdeudado = formatCurrency(client.valor);
+            const template = `Hola *${client.cliente}*,\n\nTe saludamos del área de cobranza de *CARTERA FERCOSUR*. Queremos recordarte que posees una factura vencida con nosotros:\n\n*Factura:* ${client.factura}\n*Total vencido:* ${totalAdeudado}\n*Asesor comercial:* ${client.vendedor || 'Oficina'}\n\nPor favor, ponte en contacto con nosotros para conciliar el pago de esta obligación. ¡Gracias por tu atención!`;
+            
+            document.getElementById('whatsapp-message-template').value = template;
+            document.getElementById('whatsapp-modal').classList.remove('hidden');
+        };
+
+        window.closeWhatsAppModal = function() {
+            document.getElementById('whatsapp-modal').classList.add('hidden');
+            activeWhatsAppClient = null;
+        };
+
+        window.sendWhatsAppMessage = function() {
+            if (!activeWhatsAppClient) return;
+            
+            const message = document.getElementById('whatsapp-message-template').value;
+            const phone = activeWhatsAppClient.celular ? activeWhatsAppClient.celular.toString().replace(/[^0-9]+/g, "") : "";
+            
+            if (!phone) {
+                showToast("El cliente no cuenta con un número celular registrado en la cartera.", "error");
+                return;
+            }
+
+            // Codificar el texto para que pueda ser enviado por la URL de WhatsApp
+            const encodedText = encodeURIComponent(message);
+            const whatsappUrl = `https://api.whatsapp.com/send?phone=57${phone}&text=${encodedText}`;
+            
+            // Abrir WhatsApp en pestaña nueva
+            window.open(whatsappUrl, '_blank');
+            closeWhatsAppModal();
+            showToast("Lanzando WhatsApp Web/App...", "success");
+        };
+
+        // Formatear valores a moneda local de manera visual
+        function formatCurrency(value) {
+            return new Intl.NumberFormat('es-CO', {
+                style: 'currency',
+                currency: 'COP',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            }).format(value);
+        }
+
+        // Crear una notificación Toast dinámica en pantalla sin alerts feos
+        function showToast(message, type = "info") {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            let icon = '<i class="fa-solid fa-circle-info"></i>';
+            let bg = 'bg-slate-800 text-white';
+            
+            if (type === "success") {
+                icon = '<i class="fa-solid fa-circle-check"></i>';
+                bg = 'bg-emerald-600 text-white';
+            } else if (type === "error") {
+                icon = '<i class="fa-solid fa-triangle-exclamation"></i>';
+                bg = 'bg-rose-600 text-white';
+            }
+
+            toast.className = `flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg border border-white/10 ${bg} transition-all duration-300 transform translate-y-2 opacity-0 text-xs font-semibold`;
+            toast.innerHTML = `${icon} <span class="flex-1">${message}</span>`;
+            
+            container.appendChild(toast);
+            
+            // Animación de entrada
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 50);
+
+            // Animación de salida y destrucción
+            setTimeout(() => {
+                toast.classList.add('translate-y-2', 'opacity-0');
+                setTimeout(() => {
+                    toast.remove();
+                }, 300);
+            }, 4000);
+        }
+
+        // Arrancar la inicialización de la página tras cargar el window
+        window.onload = function() {
+            initApp();
+        };
+
+    </script>
+</body>
+</html>
