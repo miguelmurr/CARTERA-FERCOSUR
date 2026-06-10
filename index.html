@@ -239,7 +239,10 @@
                         <!-- Buscador Global -->
                         <div class="relative w-full sm:w-64">
                             <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
-                            <input type="text" id="search-input" oninput="applyFilters()" placeholder="Buscar cliente, NIT o factura..." class="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all">
+                            <input type="text" id="search-input" oninput="toggleClearButton(); applyFilters()" placeholder="Buscar cliente, NIT o factura..." class="w-full pl-10 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all">
+                            <button id="clear-search-btn" onclick="clearSearchInput()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
+                                <i class="fa-solid fa-xmark text-sm"></i>
+                            </button>
                         </div>
 
                         <!-- Filtro Vendedor -->
@@ -654,7 +657,7 @@
             document.getElementById('report-max-vendedor-value').innerText = formatCurrency(maxAsesorMora);
 
 
-            // 2. RENDERIZADO GRÁFICO INTERACTIVO (CHART.JS)
+           // 2. RENDERIZADO GRÁFICO INTERACTIVO (CHART.JS)
             // Destrucción de instancias previas para evitar desbordamiento de memoria y fallos de renderizado
             if (instanceChartDistribucion) instanceChartDistribucion.destroy();
             if (instanceChartVendedores) instanceChartVendedores.destroy();
@@ -668,31 +671,51 @@
                 data: {
                     labels: ['Cartera al Día', 'Cartera Vencida'],
                     datasets: [{
+                
                         data: [carteraSana, totalVencido],
                         backgroundColor: ['#10b981', '#f43f5e'],
                         borderWidth: 2,
                         hoverOffset: 4
+              
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                   
                     plugins: {
                         legend: { position: 'bottom', labels: { boxWidth: 12, font: { family: 'Inter', size: 10 } } }
                     }
                 }
             });
 
-            // 3. PROCESAMIENTO DE SCORE DE RIESGO COMERCIAL PARA EL TOP 5 DE CLIENTES CRÍTICOS
-            const candidatosRiesgo = Object.values(mapaClientes).map(cli => {
-                // Buscamos las facturas de este cliente para extraer sus máximos días de mora reales
-                const facturasDelCliente = dataToCalculate.filter(item => 
-                    item.cliente && item.cliente.trim() === cli.nombre
+            // 3. PROCESAMIENTO DE SCORE DE RIESGO COMERCIAL PARA EL TOP 5 DE CLIENTES CRÍTICOS (Aislado del buscador)
+            const currentVendor = document.getElementById('vendedor-select').value;
+            const mapaClientesTop5 = {};
+            
+            // Recorremos la base completa para calcular el riesgo real de la zona sin importar lo que se busque en la tabla
+            portfolioData.forEach(item => {
+                if (currentVendor !== 'todos' && item.vendedor !== currentVendor) {
+                    return;
+                }
+                const identificadorCliente = item.cliente ? item.cliente.trim() : "Cliente S.N.";
+                const val = parseFloat(item.valor) || 0;
+
+                if (!mapaClientesTop5[identificadorCliente]) {
+                    mapaClientesTop5[identificadorCliente] = { nombre: identificadorCliente, vencido: 0 };
+                }
+                if (item.diasMora > 0) {
+                    mapaClientesTop5[identificadorCliente].vencido += val;
+                }
+            });
+
+            const candidatosRiesgo = Object.values(mapaClientesTop5).map(cli => {
+                const facturasDelCliente = portfolioData.filter(item => 
+                    item.cliente && item.cliente.trim() === cli.nombre &&
+                    (currentVendor === 'todos' || item.vendedor === currentVendor)
                 );
                 
                 const maxDiasMora = facturasDelCliente.reduce((max, f) => (f.diasMora > max ? f.diasMora : max), 0);
-                
-                // Fórmula de Prioridad Contable: Cartera en mora multiplicada por la gravedad del tiempo de retraso
                 const scoreRiesgo = cli.vencido * maxDiasMora;
 
                 return {
@@ -708,7 +731,6 @@
                 .filter(c => c.vencido > 0)
                 .sort((a, b) => b.score - a.score)
                 .slice(0, 5);
-
             const labelsTop5 = top5Criticos.map(c => c.nombre.length > 18 ? c.nombre.substring(0, 16) + '..' : c.nombre);
             const dataValoresTop5 = top5Criticos.map(c => c.vencido);
 
@@ -830,10 +852,32 @@
             });
 
             // Recalcular estadísticas superiores según el espectro visual definitivo
-            calculateAndRenderStats(visibleInvoices);
-
+           calculateAndRenderStats(visibleInvoices);
             currentPage = 1;
             renderTable();
+        };
+
+        // Funciones de control para limpiar el buscador global
+        window.toggleClearButton = function() {
+            const input = document.getElementById('search-input');
+            const btn = document.getElementById('clear-search-btn');
+            if (input && btn) {
+                if (input.value.trim().length > 0) {
+                    btn.classList.remove('hidden');
+                } else {
+                    btn.classList.add('hidden');
+                }
+            }
+        };
+
+        window.clearSearchInput = function() {
+            const input = document.getElementById('search-input');
+            if (input) {
+                input.value = "";
+                window.toggleClearButton();
+                window.applyFilters();
+                input.focus();
+            }
         };
 
         function renderTable() {
