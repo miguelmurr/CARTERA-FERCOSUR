@@ -333,12 +333,15 @@
                     updateDBStatus(false, "Modo Demostración Local");
                     loadDemoData();
                 }
-            } catch (error) {
+           } catch (error) {
                 console.error("Error inicializando Firebase:", error);
-                showToast("Error de conexión. Iniciando en modo local offline.", "error");
-                updateDBStatus(false, "Error de Conexión / Modo de Pruebas");
+                // Extraemos el código de error exacto que Firebase nos está devolviendo
+                const codigoError = error.code || error.message || "Desconocido";
+                showToast(`Error Firebase: ${codigoError}. Pasando a modo local.`, "error");
+                updateDBStatus(false, `Error: ${codigoError}`);
                 loadDemoData();
-            } finally {
+            }
+            finally {
                 // Ocultar Loader inicial
                 document.getElementById('initial-loader').classList.add('hidden');
                 document.getElementById('main-content').classList.remove('hidden');
