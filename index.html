@@ -594,13 +594,16 @@
 
                 // Compilación contable por vendedor
                 if (!mapaVendedores[nombreAsesor]) {
-                    mapaVendedores[nombreAsesor] = { total: 0, vencido: 0 };
+                    mapaVendedores[nombreAsesor] = { nombre: nombreAsesor, total: 0, vencido: 0, maxMora: 0 };
                 }
                 mapaVendedores[nombreAsesor].total += val;
                 if (item.diasMora > 0) {
                     mapaVendedores[nombreAsesor].vencido += val;
                 }
-            }); // <--- Cierre correcto y limpio del ciclo principal
+                if (item.diasMora > mapaVendedores[nombreAsesor].maxMora) {
+                    mapaVendedores[nombreAsesor].maxMora = item.diasMora;
+                }
+            });
 
             // Inyección básica de tarjetas principales
             document.getElementById('stat-total-cartera').innerText = formatCurrency(total);
@@ -634,13 +637,17 @@
             document.getElementById('report-max-deudor-name').innerText = maxClienteNombre;
             document.getElementById('report-max-deudor-value').innerText = formatCurrency(maxClienteValor);
 
-            // Determinar Asesor con Mayor Cartera Vencida
+            // Determinar Asesor con Mayor Riesgo de Mora aplicando la fórmula contable unificada
             let maxAsesorNombre = "Ninguno";
             let maxAsesorMora = 0;
-            Object.entries(mapaVendedores).forEach(([nombre, metricas]) => {
-                if (metricas.vencido > maxAsesorMora) {
+            let maxAsesorScore = -1;
+
+            Object.values(mapaVendedores).forEach(metricas => {
+                const scoreRiesgoAsesor = metricas.vencido * metricas.maxMora;
+                if (scoreRiesgoAsesor > maxAsesorScore) {
+                    maxAsesorScore = scoreRiesgoAsesor;
                     maxAsesorMora = metricas.vencido;
-                    maxAsesorNombre = nombre;
+                    maxAsesorNombre = metricas.nombre;
                 }
             });
             document.getElementById('report-max-vendedor-name').innerText = maxAsesorNombre;
