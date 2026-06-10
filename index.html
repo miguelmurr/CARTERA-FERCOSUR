@@ -681,26 +681,25 @@
             }
 
             try {
-                // Para guardar en lote, usamos Firebase writeBatch. 
-                // La ruta obligatoria: /artifacts/{appId}/public/data/clients/{docId}
-                const batch = writeBatch(db);
-                
-                // Para evitar exceso de almacenamiento, limitamos a procesar los primeros 300 registros en modo público por rendimiento, o guardamos el lote
-                const processLimit = Math.min(tempExcelData.length, 300);
-                
-                for (let i = 0; i < processLimit; i++) {
-                    const item = tempExcelData[i];
-                    // Creamos una clave única por cada registro (vendedor_cliente_factura) para evitar duplicados
-                    const recordId = `${item.vendedor || 'sin_asesor'}_${item.nit || 'sin_nit'}_${item.factura || 'sin_doc'}`.replace(/[\/.\s]/g, '_');
-                    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'clients', recordId);
-                    batch.set(docRef, item);
+                // Procesamos TODO el archivo Excel sin límites ficticios.
+                // Como Firebase tiene un límite de 500 operaciones por lote (batch), dividimos los registros en bloques de 400 por seguridad.
+                for (let i = 0; i < tempExcelData.length; i += 400) {
+                    const batch = writeBatch(db);
+                    const chunk = tempExcelData.slice(i, i + 400);
+                    
+                    chunk.forEach(item => {
+                        // Creamos una clave única por cada registro (vendedor_cliente_factura) para evitar duplicados
+                        const recordId = `${item.vendedor || 'sin_asesor'}_${item.nit || 'sin_nit'}_${item.factura || 'sin_doc'}`.replace(/[\/.\s]/g, '_');
+                        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'clients', recordId);
+                        batch.set(docRef, item);
+                    });
+                    
+                    await batch.commit();
                 }
-
-                await batch.commit();
                 
                 portfolioData = tempExcelData;
                 processAndRenderData();
-                showToast(`¡Base de datos de Cartera actualizada con éxito! (${processLimit} registros)`, "success");
+                showToast(`¡Base de datos de Cartera actualizada con éxito! (${tempExcelData.length} registros)`, "success");
                 
                 cancelUpload();
             } catch (error) {
