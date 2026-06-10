@@ -1024,25 +1024,19 @@
 
             let finalGroupedData = Object.values(groups);
 
-            // Discriminación restrictiva: Conservar únicamente clientes con saldo en mora real
+            // 1. Recalcular el Dashboard usando la data real de la zona (ignorando el checkbox de Solo Vencidos)
+            calculateAndRenderStats(filteredData);
+
+            // 2. Discriminación restrictiva: Conservar únicamente clientes con mora real PARA LA TABLA
             if (filtrarSoloVencidos) {
                 finalGroupedData = finalGroupedData.filter(client => client.carteraVencida > 0);
             }
 
             groupedData = finalGroupedData;
-
-            // Extracción de registros de facturas individuales para la sincronización de contadores superiores
-            const visibleInvoices = [];
-            groupedData.forEach(client => {
-                visibleInvoices.push(...client.facturas);
-            });
-
-            // Recalcular estadísticas superiores según el espectro visual definitivo
-           calculateAndRenderStats(visibleInvoices);
+            
             currentPage = 1;
             renderTable();
         };
-
         // Funciones de control para limpiar el buscador global
         window.toggleClearButton = function() {
             const input = document.getElementById('search-input');
