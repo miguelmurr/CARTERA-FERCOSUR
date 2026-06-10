@@ -180,17 +180,16 @@
                         <thead>
                             <tr class="bg-slate-50 text-slate-500 text-xs font-semibold uppercase tracking-wider border-b border-slate-100">
                                 <th class="py-3.5 px-4">Cliente / ID</th>
-                                <th class="py-3.5 px-4">Factura / Doc</th>
-                                <th class="py-3.5 px-4 text-right">Valor Cartera</th>
-                                <th class="py-3.5 px-4">Vence / Estado</th>
-                                <th class="py-3.5 px-4">Vendedor</th>
+                                <th class="py-3.5 px-4 text-right">Cartera Total</th>
+                                <th class="py-3.5 px-4 text-right">Cartera Vencida</th>
+                                <th class="py-3.5 px-4 pl-8">Vendedor</th>
                                 <th class="py-3.5 px-4 text-center">Gestión</th>
                             </tr>
                         </thead>
                         <tbody id="portfolio-table-body" class="divide-y divide-slate-100 text-sm text-slate-600">
                             <!-- Los datos cargados se renderizarán aquí -->
                             <tr>
-                                <td colspan="6" class="text-center py-12 text-slate-400">
+                                <td colspan="5" class="text-center py-12 text-slate-400">
                                     <div class="flex flex-col items-center justify-center gap-2">
                                         <i class="fa-solid fa-folder-open text-3xl text-slate-300"></i>
                                         <p class="font-medium text-xs">No hay registros de cartera. Carga un archivo Excel arriba.</p>
@@ -482,17 +481,17 @@
             applyFilters();
         }
 
+        let groupedData = [];
+
         window.applyFilters = function() {
             const searchQuery = document.getElementById('search-input').value.toLowerCase().trim();
             const selectedVendor = document.getElementById('vendedor-select').value;
 
             filteredData = portfolioData.filter(item => {
-                // Filtro por vendedor
                 if (selectedVendor !== 'todos' && item.vendedor !== selectedVendor) {
                     return false;
                 }
 
-                // Filtro por búsqueda global (Cliente, NIT, Factura, Población o Teléfono)
                 if (searchQuery) {
                     const clientMatch = item.cliente ? item.cliente.toLowerCase().includes(searchQuery) : false;
                     const nitMatch = item.nit ? item.nit.toString().includes(searchQuery) : false;
@@ -506,6 +505,31 @@
                 return true;
             });
 
+            // Agrupación contable de facturas bajo una única entidad cliente
+            const groups = {};
+            filteredData.forEach(item => {
+                const key = item.nit ? item.nit.toString().trim() : (item.cliente ? item.cliente.toString().trim() : 'sin_id');
+                if (!groups[key]) {
+                    groups[key] = {
+                        cliente: item.cliente,
+                        nit: item.nit,
+                        ciudad: item.ciudad,
+                        vendedor: item.vendedor,
+                        celular: item.celular,
+                        carteraTotal: 0,
+                        carteraVencida: 0,
+                        facturas: []
+                    };
+                }
+                const val = parseFloat(item.valor) || 0;
+                groups[key].carteraTotal += val;
+                if (item.diasMora > 0) {
+                    groups[key].carteraVencida += val;
+                }
+                groups[key].facturas.push(item);
+            });
+
+            groupedData = Object.values(groups);
             currentPage = 1;
             renderTable();
         };
@@ -514,10 +538,10 @@
             const tableBody = document.getElementById('portfolio-table-body');
             tableBody.innerHTML = '';
 
-            if (filteredData.length === 0) {
+            if (groupedData.length === 0) {
                 tableBody.innerHTML = `
                     <tr>
-                        <td colspan="6" class="text-center py-12 text-slate-400">
+                        <td colspan="5" class="text-center py-12 text-slate-400">
                             <div class="flex flex-col items-center justify-center gap-2">
                                 <i class="fa-solid fa-face-frown text-3xl text-slate-300"></i>
                                 <p class="font-medium text-xs">No se encontraron registros de cartera con los filtros aplicados.</p>
@@ -531,62 +555,102 @@
                 return;
             }
 
-            // Cálculo de paginación
             const startIndex = (currentPage - 1) * rowsPerPage;
-            const endIndex = Math.min(startIndex + rowsPerPage, filteredData.length);
-            const paginatedItems = filteredData.slice(startIndex, endIndex);
+            const endIndex = Math.min(startIndex + rowsPerPage, groupedData.length);
+            const paginatedItems = groupedData.slice(startIndex, endIndex);
 
-            paginatedItems.forEach(item => {
-                const tr = document.createElement('tr');
-                tr.className = "hover:bg-slate-50/70 transition-colors";
+            paginatedItems.forEach((client, idx) => {
+                const globalIdx = startIndex + idx;
+                
+                // Fila de Resumen de Cliente
+                const trMain = document.createElement('tr');
+                trMain.className = "hover:bg-slate-50/70 transition-colors cursor-pointer border-b border-slate-100 group";
+                trMain.onclick = function() {
+                    const detailsRow = document.getElementById(`details-${globalIdx}`);
+                    const icon = document.getElementById(`icon-${globalIdx}`);
+                    if (detailsRow) {
+                        const isHidden = detailsRow.classList.toggle('hidden');
+                        if (icon) {
+                            icon.style.transform = isHidden ? 'rotate(0deg)' : 'rotate(90deg)';
+                        }
+                    }
+                };
 
-                // Formatear estado de vencimiento
-                let badgeClass = "";
-                let badgeText = "";
-                if (item.diasMora > 0) {
-                    badgeClass = "bg-rose-50 text-rose-700 border border-rose-100";
-                    badgeText = `Vencido (${item.diasMora} días)`;
-                } else {
-                    badgeClass = "bg-emerald-50 text-emerald-700 border border-emerald-100";
-                    badgeText = "Al día";
-                }
+                const vencidoClass = client.carteraVencida > 0 ? "text-rose-600 font-extrabold" : "text-slate-400 font-medium";
 
-                tr.innerHTML = `
+                trMain.innerHTML = `
                     <td class="py-4 px-4">
-                        <div class="font-bold text-slate-800 leading-tight">${item.cliente || 'CLIENTE S.N.'}</div>
-                        <div class="text-xs text-slate-400 mt-0.5 flex flex-col gap-0.5">
-                            <span><strong>NIT:</strong> ${item.nit || 'Sin registro'}</span>
-                            <span class="text-indigo-600 font-medium"><i class="fa-solid fa-location-dot text-[10px] mr-1"></i>${item.ciudad || 'No especificada'}</span>
+                        <div class="font-bold text-slate-800 leading-tight flex items-center gap-2">
+                            <i id="icon-${globalIdx}" class="fa-solid fa-chevron-right text-[10px] text-slate-400 transition-transform duration-200"></i>
+                            ${client.cliente || 'CLIENTE S.N.'}
+                        </div>
+                        <div class="text-xs text-slate-400 mt-0.5 flex flex-col gap-0.5 pl-4">
+                            <span><strong>NIT:</strong> ${client.nit || 'Sin registro'}</span>
+                            <span class="text-indigo-600 font-medium"><i class="fa-solid fa-location-dot text-[10px] mr-1"></i>${client.ciudad || 'No especificada'}</span>
                         </div>
                     </td>
-                    <td class="py-4 px-4 font-semibold text-slate-700">
-                        ${item.factura || 'Factura N/A'}
-                    </td>
                     <td class="py-4 px-4 text-right font-extrabold text-slate-800">
-                        ${formatCurrency(item.valor)}
+                        ${formatCurrency(client.carteraTotal)}
                     </td>
-                    <td class="py-4 px-4">
-                        <div class="text-xs font-semibold text-slate-500">${item.vence || '---'}</div>
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold mt-1 ${badgeClass}">
-                            ${badgeText}
-                        </span>
+                    <td class="py-4 px-4 text-right ${vencidoClass}">
+                        ${formatCurrency(client.carteraVencida)}
                     </td>
-                    <td class="py-4 px-4 font-medium text-slate-500 text-xs">
-                        ${item.vendedor || 'Sin asignar'}
+                    <td class="py-4 px-4 font-medium text-slate-500 text-xs pl-8">
+                        ${client.vendedor || 'Sin asignar'}
                     </td>
                     <td class="py-4 px-4 text-center">
-                        <button onclick='openWhatsAppModal(${JSON.stringify(item)})' class="h-9 w-9 bg-emerald-50 hover:bg-emerald-600 text-emerald-600 hover:text-white rounded-xl flex items-center justify-center transition-all mx-auto shadow-sm" title="Enviar cobro por WhatsApp">
+                        <button onclick='event.stopPropagation(); openWhatsAppModalFromIndex(${globalIdx})' class="h-9 w-9 bg-emerald-50 hover:bg-emerald-600 text-emerald-600 hover:text-white rounded-xl flex items-center justify-center transition-all mx-auto shadow-sm" title="Enviar cobro por WhatsApp">
                             <i class="fa-brands fa-whatsapp text-lg"></i>
                         </button>
                     </td>
                 `;
-                tableBody.appendChild(tr);
+                tableBody.appendChild(trMain);
+
+                // Fila Desplegable con Contenedor de Facturas
+                const trDetails = document.createElement('tr');
+                trDetails.id = `details-${globalIdx}`;
+                trDetails.className = "hidden bg-slate-50/40 border-b border-slate-100";
+
+                let invoicesHTML = '';
+                client.facturas.forEach(f => {
+                    const badgeClass = f.diasMora > 0 ? "bg-rose-50 text-rose-700 border border-rose-100" : "bg-emerald-50 text-emerald-700 border border-emerald-100";
+                    const badgeText = f.diasMora > 0 ? `Vencido (${f.diasMora} días)` : "Al día";
+
+                    invoicesHTML += `
+                        <div class="grid grid-cols-4 gap-4 py-2.5 px-4 text-xs border-b border-slate-100 last:border-0 items-center">
+                            <div class="font-semibold text-slate-700">
+                                <i class="fa-solid fa-file-invoice mr-2 text-slate-400"></i>${f.factura || 'Factura N/A'}
+                            </div>
+                            <div class="text-slate-500">Vence: ${f.vence || '---'}</div>
+                            <div>
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${badgeClass}">
+                                    ${badgeText}
+                                </span>
+                            </div>
+                            <div class="text-right font-bold text-slate-800">${formatCurrency(f.valor)}</div>
+                        </div>
+                    `;
+                });
+
+                trDetails.innerHTML = `
+                    <td colspan="5" class="p-0">
+                        <div class="bg-slate-100/60 p-4 rounded-xl m-2 border border-slate-200/60 shadow-inner">
+                            <div class="text-slate-500 font-bold text-[11px] uppercase tracking-wider mb-2 px-4 flex justify-between">
+                                <span>Detalle de Facturas</span>
+                                <span>${client.facturas.length} documentos</span>
+                            </div>
+                            <div class="bg-white rounded-xl border border-slate-100 divide-y divide-slate-100 overflow-hidden shadow-xs">
+                                ${invoicesHTML}
+                            </div>
+                        </div>
+                    </td>
+                `;
+                tableBody.appendChild(trDetails);
             });
 
-            // Actualizar botones de paginación
-            document.getElementById('table-pagination-info').innerText = `Mostrando ${startIndex + 1} a ${endIndex} de ${filteredData.length} registros`;
+            document.getElementById('table-pagination-info').innerText = `Mostrando ${startIndex + 1} a ${endIndex} de ${groupedData.length} clientes registrados`;
             document.getElementById('btn-prev-page').disabled = currentPage === 1;
-            document.getElementById('btn-next-page').disabled = endIndex >= filteredData.length;
+            document.getElementById('btn-next-page').disabled = endIndex >= groupedData.length;
         }
 
         window.changePage = function(direction) {
@@ -775,18 +839,19 @@
 
         let activeWhatsAppClient = null;
 
-        window.openWhatsAppModal = function(client) {
+        window.openWhatsAppModalFromIndex = function(index) {
+            const client = groupedData[index];
             activeWhatsAppClient = client;
             
             document.getElementById('modal-client-name').innerText = client.cliente || 'CLIENTE S.N.';
             document.getElementById('modal-client-phone').innerText = client.celular || '3000000000';
-            document.getElementById('modal-client-invoice').innerText = client.factura || 'FE-0000';
-            document.getElementById('modal-client-value').innerText = formatCurrency(client.valor);
+            document.getElementById('modal-client-invoice').innerText = client.facturas.length === 1 ? client.facturas[0].factura : `${client.facturas.length} Facturas`;
+            document.getElementById('modal-client-value').innerText = formatCurrency(client.carteraTotal);
 
-            // Buscar todas las facturas del mismo cliente usando su NIT
-            const facturasCliente = portfolioData.filter(item => item.nit === client.nit);
+            // Sincronización global con la base de datos completa de cartera para este cliente
+            const facturasCliente = portfolioData.filter(item => item.nit ? item.nit === client.nit : item.cliente === client.cliente);
 
-            // Regla de orden: Más días de mora primero. Si están al día, las más antiguas respecto a fecha
+            // Regla de ordenamiento comercial de Fercosur
             facturasCliente.sort((a, b) => {
                 if (b.diasMora !== a.diasMora) {
                     return b.diasMora - a.diasMora; 
@@ -797,7 +862,7 @@
             // Construir la lista aplicando las reglas de alertas con símbolos universales
             let listaFacturas = "";
             facturasCliente.forEach(f => {
-                let indicador = "🟢"; // Sin vencer por defecto
+                let indicador = "🟢"; 
                 
                 if (f.diasMora > 15) {
                     indicador = "⚠️";
@@ -810,7 +875,6 @@
                 listaFacturas += `* ${indicador} Factura: ${f.factura} | Valor: ${formatCurrency(f.valor)} | Días de mora: ${f.diasMora}\n`;
             });
 
-            // Plantilla de mensaje formal y suavizada para el cliente
             const template = `Estimado(a) ${client.cliente}, es un gusto saludarle de parte de FERCOSUR.\n\nNos comunicamos con usted para poner a su disposición información relevante sobre el estado actual de su cuenta:\n\n${listaFacturas}\nNuestro objetivo es brindarle el acompañamiento necesario para mantener su cuenta al día. Le agradeceríamos su gestión respecto al pago de esta obligación. Quedamos atentos a cualquier inquietud o si requiere asistencia adicional.\n\nMuchas gracias por confiar en nosotros.`;
             
             document.getElementById('whatsapp-message-template').value = template;
