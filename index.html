@@ -154,7 +154,7 @@
                             </div>
                         </div>
                         <div class="bg-white p-4 rounded-xl border border-slate-100 flex flex-col items-center justify-center h-64">
-                            <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 self-start"><i class="fa-solid fa-chart-column mr-1 text-blue-500"></i> Rendimiento por Asesor</h4>
+                            <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 self-start"><i class="fa-solid fa-triangle-exclamation mr-1 text-rose-500"></i> Top 5 Clientes Críticos (Riesgo)</h4>
                             <div class="w-full h-full relative flex items-center justify-center">
                                 <canvas id="chart-vendedores"></canvas>
                             </div>
@@ -580,10 +580,25 @@
                     uniqueVendors.add(item.vendedor.trim());
                 }
 
-                // Compilación contable por cliente
-                if (!mapaClientes[identificadorCliente]) mapaClientes[identificadorCliente] = 0;
-                mapaClientes[identificadorCliente] += val;
+               // Compilación contable por cliente
+                if (!mapaClientes[identificadorCliente]) {
+                    mapaClientes[identificadorCliente] = { nombre: identificadorCliente, total: 0, vencido: 0 };
+                }
+                mapaClientes[identificadorCliente].total += val;
+                if (item.diasMora > 0) {
+                    mapaClientes[identificadorCliente].vencido += val;
+                }
+            });
 
+            // Determinar Máximo Deudor Comercial
+            let maxClienteNombre = "Ninguno";
+            let maxClienteValor = 0;
+            Object.values(mapaClientes).forEach(cli => {
+                if (cli.total > maxClienteValor) {
+                    maxClienteValor = cli.total;
+                    maxClienteNombre = cli.nombre;
+                }
+            });
                 // Compilación contable por vendedor
                 if (!mapaVendedores[nombreAsesor]) {
                     mapaVendedores[nombreAsesor] = { total: 0, vencido: 0 };
@@ -646,7 +661,7 @@
 
             const carteraSana = total - totalVencido;
 
-            // Inicialización Gráfico de Torta - Distribución de Estado de Cuenta
+           // Inicialización Gráfico de Torta - Distribución de Estado de Cuenta
             const ctxDist = document.getElementById('chart-distribucion').getContext('2d');
             instanceChartDistribucion = new Chart(ctxDist, {
                 type: 'doughnut',
@@ -668,41 +683,72 @@
                 }
             });
 
-            // Preparación de vectores para el gráfico de barras por asesor
-            const arrayVendedores = Object.keys(mapaVendedores).sort();
-            const saldosTotalesAsesores = arrayVendedores.map(v => mapaVendedores[v].total);
-            const saldosVencidosAsesores = arrayVendedores.map(v => mapaVendedores[v].vencido);
+            // 3. PROCESAMIENTO DE SCORE DE RIESGO COMERCIAL PARA EL TOP 5 DE CLIENTES CRÍTICOS
+            const candidatosRiesgo = Object.values(mapaClientes).map(cli => {
+                // Buscamos las facturas de este cliente para extraer sus máximos días de mora reales
+                const facturasDelCliente = dataToCalculate.filter(item => 
+                    item.cliente && item.cliente.trim() === cli.nombre
+                );
+                
+                const maxDiasMora = facturasDelCliente.reduce((max, f) => (f.diasMora > max ? f.diasMora : max), 0);
+                
+                // Fórmula de Prioridad Contable: Cartera en mora multiplicada por la gravedad del tiempo de retraso
+                const scoreRiesgo = cli.vencido * maxDiasMora;
 
-            // Inicialización Gráfico de Barras - Rendimiento Comparativo de Asesores
+                return {
+                    nombre: cli.nombre,
+                    vencido: cli.vencido,
+                    maxMora: maxDiasMora,
+                    score: scoreRiesgo
+                };
+            });
+
+            // Ordenamos de forma descendente basándonos en la fórmula y extraemos el Top 5
+            const top5Criticos = candidatosRiesgo
+                .filter(c => c.vencido > 0)
+                .sort((a, b) => b.score - a.score)
+                .slice(0, 5);
+
+            const labelsTop5 = top5Criticos.map(c => c.nombre.length > 18 ? c.nombre.substring(0, 16) + '..' : c.nombre);
+            const dataValoresTop5 = top5Criticos.map(c => c.vencido);
+
+            // Inicialización Gráfico de Barras Horizontales - Top 5 de Riesgo Absoluto
             const ctxVend = document.getElementById('chart-vendedores').getContext('2d');
             instanceChartVendedores = new Chart(ctxVend, {
                 type: 'bar',
                 data: {
-                    labels: arrayVendedores,
-                    datasets: [
-                        {
-                            label: 'Total Asignado',
-                            data: saldosTotalesAsesores,
-                            backgroundColor: '#3b82f6',
-                            borderRadius: 4
-                        },
-                        {
-                            label: 'Monto Vencido',
-                            data: saldosVencidosAsesores,
-                            backgroundColor: '#ef4444',
-                            borderRadius: 4
-                        }
-                    ]
+                    labels: labelsTop5.length > 0 ? labelsTop5 : ['Sin deudores'],
+                    datasets: [{
+                        label: 'Cartera Vencida',
+                        data: dataValoresTop5.length > 0 ? dataValoresTop5 : [0],
+                        backgroundColor: '#e11d48', // Color de alerta intensa (rose-600)
+                        borderRadius: 6,
+                        barThickness: 16
+                    }]
                 },
                 options: {
+                    indexAxis: 'y', // Cambia el gráfico a formato horizontal para leer los nombres perfectamente
                     responsive: true,
                     maintainAspectRatio: false,
                     scales: {
-                        x: { grid: { display: false }, ticks: { font: { family: 'Inter', size: 9 } } },
-                        y: { ticks: { font: { family: 'Inter', size: 9 }, callback: value => '$' + value / 1e6 + 'M' } }
+                        x: { 
+                            ticks: { font: { family: 'Inter', size: 8 }, callback: value => '$' + value.toLocaleString('es-CO') }
+                        },
+                        y: { 
+                            grid: { display: false }, 
+                            ticks: { font: { family: 'Inter', size: 9, weight: 'bold' } } 
+                        }
                     },
                     plugins: {
-                        legend: { position: 'bottom', labels: { boxWidth: 10, font: { family: 'Inter', size: 10 } } }
+                        legend: { display: false }, // Ocultamos leyenda porque el título del cuadro ya es explícito
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const clienteObj = top5Criticos[context.dataIndex];
+                                    return ` En mora: $${clienteObj.vencido.toLocaleString('es-CO')} | Máx Mora: ${clienteObj.maxMora} días`;
+                                }
+                            }
+                        }
                     }
                 }
             });
