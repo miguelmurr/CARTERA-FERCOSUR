@@ -8,7 +8,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js" crossorigin="anonymous"></script>
     <!-- Librería para leer archivos Excel directamente en el navegador -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <style>
         body {
@@ -144,7 +145,63 @@
                     </div>
                 </div>
 
-                <!-- Barra informativa de confirmación para subir a Firebase (Solo aparece cuando cargas un Excel) -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 border-t border-slate-100 pt-6">
+                    <div class="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                        <div class="bg-white p-4 rounded-xl border border-slate-100 flex flex-col items-center justify-center h-64">
+                            <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 self-start"><i class="fa-solid fa-chart-pie mr-1 text-indigo-500"></i> Distribución de Cartera</h4>
+                            <div class="w-full h-full relative flex items-center justify-center">
+                                <canvas id="chart-distribucion"></canvas>
+                            </div>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl border border-slate-100 flex flex-col items-center justify-center h-64">
+                            <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 self-start"><i class="fa-solid fa-chart-column mr-1 text-blue-500"></i> Rendimiento por Asesor</h4>
+                            <div class="w-full h-full relative flex items-center justify-center">
+                                <canvas id="chart-vendedores"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100 flex flex-col gap-4">
+                        <h4 class="text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center gap-2 border-b border-slate-200 pb-2">
+                            <i class="fa-solid fa-file-contract text-indigo-600 text-sm"></i> Informe de Control de Riesgo
+                        </h4>
+                        <div class="flex flex-col gap-3.5 flex-1 justify-between py-1">
+                            <div class="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-100 shadow-2xs">
+                                <div>
+                                    <span class="text-[11px] font-semibold text-slate-400 block uppercase tracking-wide">Índice de Morosidad</span>
+                                    <span id="report-indice-mora-texto" class="text-xs text-slate-500 font-medium">Cargando análisis...</span>
+                                </div>
+                                <div class="text-right">
+                                    <span id="report-indice-mora" class="text-lg font-black text-rose-600">0%</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-100 shadow-2xs">
+                                <div>
+                                    <span class="text-[11px] font-semibold text-slate-400 block uppercase tracking-wide">Deuda Promedio por Cliente</span>
+                                    <span class="text-[10px] text-slate-400 font-medium">Saldo total / Clientes activos</span>
+                                </div>
+                                <div class="text-right">
+                                    <span id="report-ticket-promedio" class="text-sm font-extrabold text-slate-800">$0</span>
+                                </div>
+                            </div>
+                            <div class="bg-white p-3 rounded-xl border border-slate-100 shadow-2xs flex flex-col gap-1">
+                                <span class="text-[11px] font-semibold text-slate-400 block uppercase tracking-wide">Máxima Concentración de Deuda</span>
+                                <div class="flex justify-between items-center mt-0.5">
+                                    <span id="report-max-deudor-name" class="text-xs font-bold text-slate-700 truncate max-w-[180px]">Ninguno</span>
+                                    <span id="report-max-deudor-value" class="text-xs font-extrabold text-slate-800 shrink-0">$0</span>
+                                </div>
+                            </div>
+                            <div class="bg-white p-3 rounded-xl border border-slate-100 shadow-2xs flex flex-col gap-1">
+                                <span class="text-[11px] font-semibold text-slate-400 block uppercase tracking-wide">Mayor Riesgo de Cobro por Asesor</span>
+                                <div class="flex justify-between items-center mt-0.5">
+                                    <span id="report-max-vendedor-name" class="text-xs font-bold text-slate-700 truncate max-w-[180px]">Ninguno</span>
+                                    <span id="report-max-vendedor-value" class="text-xs font-extrabold text-rose-600 shrink-0">$0</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div id="upload-action-bar" class="hidden flex flex-col sm:flex-row items-center justify-between p-4 bg-amber-50 rounded-2xl border border-amber-200 gap-4">
                     <div class="flex items-center gap-3">
                         <div class="h-10 w-10 bg-amber-100 text-amber-700 rounded-xl flex items-center justify-center">
@@ -487,6 +544,12 @@
         let groupedData = [];
 
         // Calcula y actualiza las tarjetas de estadísticas superiores en tiempo real
+        let groupedData = [];
+        // Punteros globales para el control estricto de instancias de Chart.js
+        let instanceChartDistribucion = null;
+        let instanceChartVendedores = null;
+
+        // Calcula estadísticas superiores, compila el informe de riesgo y actualiza los gráficos interactivos
         function calculateAndRenderStats(dataToCalculate) {
             let total = 0;
             let totalVencido = 0;
@@ -494,9 +557,16 @@
             const uniqueClients = new Set();
             const uniqueVendors = new Set();
 
+            // Estructuras de acumulación contable para el informe analítico
+            const mapaClientes = {};
+            const mapaVendedores = {};
+
             dataToCalculate.forEach(item => {
                 const val = parseFloat(item.valor) || 0;
                 total += val;
+
+                const nombreAsesor = item.vendedor ? item.vendedor.trim() : "Sin Asesor";
+                const identificadorCliente = item.cliente ? item.cliente.trim() : "Cliente S.N.";
 
                 if (item.diasMora > 0) {
                     totalVencido += val;
@@ -509,14 +579,133 @@
                 if (item.vendedor) {
                     uniqueVendors.add(item.vendedor.trim());
                 }
+
+                // Compilación contable por cliente
+                if (!mapaClientes[identificadorCliente]) mapaClientes[identificadorCliente] = 0;
+                mapaClientes[identificadorCliente] += val;
+
+                // Compilación contable por vendedor
+                if (!mapaVendedores[nombreAsesor]) {
+                    mapaVendedores[nombreAsesor] = { total: 0, vencido: 0 };
+                }
+                mapaVendedores[nombreAsesor].total += val;
+                if (item.diasMora > 0) {
+                    mapaVendedores[nombreAsesor].vencido += val;
+                }
             });
 
+            // Inyección básica de tarjetas principales
             document.getElementById('stat-total-cartera').innerText = formatCurrency(total);
             document.getElementById('stat-total-count').innerText = `${dataToCalculate.length} facturas registradas`;
             document.getElementById('stat-vencida-cartera').innerText = formatCurrency(totalVencido);
             document.getElementById('stat-vencida-count').innerText = `${morososCount} facturas vencidas`;
             document.getElementById('stat-total-clientes').innerText = uniqueClients.size;
             document.getElementById('stat-vendedores').innerText = uniqueVendors.size;
+
+            // 1. CÁLCULO DE MÉTRICAS DEL INFORME DE RIESGO
+            const indiceMora = total > 0 ? Math.round((totalVencido / total) * 100) : 0;
+            document.getElementById('report-indice-mora').innerText = `${indiceMora}%`;
+            
+            let textoMoraEvaluacion = "Cartera Saludable";
+            if (indiceMora > 30) textoMoraEvaluacion = "Riesgo Crítico de Liquidez";
+            else if (indiceMora > 15) textoMoraEvaluacion = "Alerta de Mora Moderada";
+            document.getElementById('report-indice-mora-texto').innerText = textoMoraEvaluacion;
+
+            const totalClientesUnicos = uniqueClients.size || 1;
+            document.getElementById('report-ticket-promedio').innerText = formatCurrency(total / totalClientesUnicos);
+
+            // Determinar Máximo Deudor Comercial
+            let maxClienteNombre = "Ninguno";
+            let maxClienteValor = 0;
+            Object.entries(mapaClientes).forEach(([nombre, saldo]) => {
+                if (saldo > maxClienteValor) {
+                    maxClienteValor = saldo;
+                    maxClienteNombre = nombre;
+                }
+            });
+            document.getElementById('report-max-deudor-name').innerText = maxClienteNombre;
+            document.getElementById('report-max-deudor-value').innerText = formatCurrency(maxClienteValor);
+
+            // Determinar Asesor con Mayor Cartera Vencida
+            let maxAsesorNombre = "Ninguno";
+            let maxAsesorMora = 0;
+            Object.entries(mapaVendedores).forEach(([nombre, metricas]) => {
+                if (metricas.vencido > maxAsesorMora) {
+                    maxAsesorMora = metricas.vencido;
+                    maxAsesorNombre = nombre;
+                }
+            });
+            document.getElementById('report-max-vendedor-name').innerText = maxAsesorNombre;
+            document.getElementById('report-max-vendedor-value').innerText = formatCurrency(maxAsesorMora);
+
+
+            // 2. RENDERIZADO GRÁFICO INTERACTIVO (CHART.JS)
+            // Destrucción de instancias previas para evitar desbordamiento de memoria y fallos de renderizado
+            if (instanceChartDistribucion) instanceChartDistribucion.destroy();
+            if (instanceChartVendedores) instanceChartVendedores.destroy();
+
+            const carteraSana = total - totalVencido;
+
+            // Inicialización Gráfico de Torta - Distribución de Estado de Cuenta
+            const ctxDist = document.getElementById('chart-distribucion').getContext('2d');
+            instanceChartDistribucion = new Chart(ctxDist, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Cartera al Día', 'Cartera Vencida'],
+                    datasets: [{
+                        data: [carteraSana, totalVencido],
+                        backgroundColor: ['#10b981', '#f43f5e'],
+                        borderWidth: 2,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 12, font: { family: 'Inter', size: 10 } } }
+                    }
+                }
+            });
+
+            // Preparación de vectores para el gráfico de barras por asesor
+            const arrayVendedores = Object.keys(mapaVendedores).sort();
+            const saldosTotalesAsesores = arrayVendedores.map(v => mapaVendedores[v].total);
+            const saldosVencidosAsesores = arrayVendedores.map(v => mapaVendedores[v].vencido);
+
+            // Inicialización Gráfico de Barras - Rendimiento Comparativo de Asesores
+            const ctxVend = document.getElementById('chart-vendedores').getContext('2d');
+            instanceChartVendedores = new Chart(ctxVend, {
+                type: 'bar',
+                data: {
+                    labels: arrayVendedores,
+                    datasets: [
+                        {
+                            label: 'Total Asignado',
+                            data: saldosTotalesAsesores,
+                            backgroundColor: '#3b82f6',
+                            borderRadius: 4
+                        },
+                        {
+                            label: 'Monto Vencido',
+                            data: saldosVencidosAsesores,
+                            backgroundColor: '#ef4444',
+                            borderRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { grid: { display: false }, ticks: { font: { family: 'Inter', size: 9 } } },
+                        y: { ticks: { font: { family: 'Inter', size: 9 }, callback: value => '$' + value / 1e6 + 'M' } }
+                    },
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 10, font: { family: 'Inter', size: 10 } } }
+                    }
+                }
+            });
         }
 
         window.applyFilters = function() {
