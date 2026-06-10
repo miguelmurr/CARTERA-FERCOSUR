@@ -158,14 +158,20 @@
 
                         <!-- Filtro Vendedor -->
                         <div class="relative w-full sm:w-52">
-                            <i class="fa-solid fa-filter absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                             <i class="fa-solid fa-filter absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
                             <select id="vendedor-select" onchange="applyFilters()" class="w-full pl-10 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none cursor-pointer">
                                 <option value="todos">Todos los Vendedores</option>
                             </select>
                             <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-[10px] pointer-events-none"></i>
                         </div>
 
-                        <!-- Botón Pequeño de Excel para Carga Rápida -->
+                        <label class="flex items-center gap-2 cursor-pointer bg-slate-50 border border-slate-200 px-3.5 py-2 rounded-xl text-xs select-none hover:bg-slate-100/80 transition-all w-full sm:w-auto shrink-0 shadow-2xs">
+                            <input type="checkbox" id="vencidos-checkbox" onchange="applyFilters()" class="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500/40 cursor-pointer accent-indigo-600">
+                            <span class="font-bold text-slate-600 flex items-center gap-1.5">
+                                <i class="fa-solid fa-calendar-minus text-rose-500"></i> Solo Vencidos
+                            </span>
+                        </label>
+
                         <button onclick="document.getElementById('excel-file').click()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl flex items-center justify-center gap-2 text-xs font-bold shadow-sm transition-all w-full sm:w-auto" title="Subir nuevo reporte diario Excel">
                             <i class="fa-solid fa-file-excel text-base"></i>
                             <span>Cargar Excel</span>
@@ -491,29 +497,40 @@
         }
 
         window.applyFilters = function() {
-            const searchQuery = document.getElementById('search-input').value.toLowerCase().trim();
+            const searchQuery = document.getElementById('search-input').value.trim();
             const selectedVendor = document.getElementById('vendedor-select').value;
+            const filtrarSoloVencidos = document.getElementById('vencidos-checkbox').checked;
+
+            const cleanText = (text) => {
+                if (!text) return "";
+                return text.toString()
+                    .toLowerCase()
+                    .normalize("NFD")
+                    .replace(/[\u0300-\u036f]/g, "");
+            };
+
+            const cleanedQuery = cleanText(searchQuery);
+            const searchWords = cleanedQuery.split(/\s+/).filter(word => word.length > 0);
 
             filteredData = portfolioData.filter(item => {
                 if (selectedVendor !== 'todos' && item.vendedor !== selectedVendor) {
                     return false;
                 }
 
-                if (searchQuery) {
-                    const clientMatch = item.cliente ? item.cliente.toLowerCase().includes(searchQuery) : false;
-                    const nitMatch = item.nit ? item.nit.toString().includes(searchQuery) : false;
-                    const invoiceMatch = item.factura ? item.factura.toLowerCase().includes(searchQuery) : false;
-                    const ciudadMatch = item.ciudad ? item.ciudad.toLowerCase().includes(searchQuery) : false;
-                    const celularMatch = item.celular ? item.celular.toString().includes(searchQuery) : false;
-                    
-                    return clientMatch || nitMatch || invoiceMatch || ciudadMatch || celularMatch;
+                if (searchWords.length > 0) {
+                    const itemDataString = cleanText(`
+                        ${item.cliente} 
+                        ${item.nit} 
+                        ${item.factura} 
+                        ${item.ciudad} 
+                        ${item.celular} 
+                        ${item.vendedor}
+                    `);
+                    return searchWords.every(word => itemDataString.includes(word));
                 }
 
                 return true;
             });
-
-            // Recalcular estadísticas superiores según el filtro aplicado (Vendedor y/o Buscador) :D
-            calculateAndRenderStats(filteredData);
 
             // Agrupación contable de facturas bajo una única entidad cliente
             const groups = {};
@@ -539,7 +556,24 @@
                 groups[key].facturas.push(item);
             });
 
-            groupedData = Object.values(groups);
+            let finalGroupedData = Object.values(groups);
+
+            // Discriminación restrictiva: Conservar únicamente clientes con saldo en mora real
+            if (filtrarSoloVencidos) {
+                finalGroupedData = finalGroupedData.filter(client => client.carteraVencida > 0);
+            }
+
+            groupedData = finalGroupedData;
+
+            // Extracción de registros de facturas individuales para la sincronización de contadores superiores
+            const visibleInvoices = [];
+            groupedData.forEach(client => {
+                visibleInvoices.push(...client.facturas);
+            });
+
+            // Recalcular estadísticas superiores según el espectro visual definitivo
+            calculateAndRenderStats(visibleInvoices);
+
             currentPage = 1;
             renderTable();
         };
