@@ -722,9 +722,35 @@
             document.getElementById('modal-client-invoice').innerText = client.factura || 'FE-0000';
             document.getElementById('modal-client-value').innerText = formatCurrency(client.valor);
 
-            // Plantilla de mensaje dinámica editable
-            const totalAdeudado = formatCurrency(client.valor);
-            const template = `Hola *${client.cliente}*,\n\nTe saludamos del área de cobranza de *CARTERA FERCOSUR*. Queremos recordarte que posees una factura vencida con nosotros:\n\n*Factura:* ${client.factura}\n*Total vencido:* ${totalAdeudado}\n*Asesor comercial:* ${client.vendedor || 'Oficina'}\n\nPor favor, ponte en contacto con nosotros para conciliar el pago de esta obligación. ¡Gracias por tu atención!`;
+            // Buscar todas las facturas del mismo cliente usando su NIT
+            const facturasCliente = portfolioData.filter(item => item.nit === client.nit);
+
+            // Regla de orden: Más días de mora primero. Si están al día, las más antiguas respecto a fecha
+            facturasCliente.sort((a, b) => {
+                if (b.diasMora !== a.diasMora) {
+                    return b.diasMora - a.diasMora; 
+                }
+                return new Date(a.vence) - new Date(b.vence);
+            });
+
+            // Construir la lista aplicando las reglas de alertas con símbolos universales
+            let listaFacturas = "";
+            facturasCliente.forEach(f => {
+                let indicador = "🟢"; // Sin vencer por defecto
+                
+                if (f.diasMora > 15) {
+                    indicador = "⚠️";
+                } else if (f.diasMora > 10) {
+                    indicador = "🔴";
+                } else if (f.diasMora >= 1) {
+                    indicador = "🟡";
+                }
+                
+                listaFacturas += `* ${indicador} Factura: ${f.factura} | Valor: ${formatCurrency(f.valor)} | Días de mora: ${f.diasMora}\n`;
+            });
+
+            // Plantilla de mensaje formal y suavizada para el cliente
+            const template = `Estimado(a) ${client.cliente}, es un gusto saludarle de parte de FERCOSUR.\n\nNos comunicamos con usted para poner a su disposición información relevante sobre el estado actual de su cuenta:\n\n${listaFacturas}\nNuestro objetivo es brindarle el acompañamiento necesario para mantener su cuenta al día. Le agradeceríamos su gestión respecto al pago de esta obligación. Quedamos atentos a cualquier inquietud o si requiere asistencia adicional.\n\nMuchas gracias por confiar en nosotros.`;
             
             document.getElementById('whatsapp-message-template').value = template;
             document.getElementById('whatsapp-modal').classList.remove('hidden');
