@@ -33,7 +33,30 @@
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
 
-    <!-- Cabecera de la Aplicación -->
+    <div id="password-screen" class="fixed inset-0 z-50 bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 flex items-center justify-center p-4 backdrop-blur-md">
+        <div class="bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-md w-full p-8 flex flex-col items-center gap-6 animate-in fade-in zoom-in-95 duration-300">
+            <div class="h-16 w-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shadow-xs">
+                <i class="fa-solid fa-lock text-2xl"></i>
+            </div>
+            <div class="text-center flex flex-col gap-1">
+                <h2 class="text-xl font-extrabold text-slate-900 tracking-tight">Acceso Restringido</h2>
+                <p class="text-xs text-slate-400 font-medium">Esta plataforma contiene información confidencial de Fercosur. Ingrese su clave de autorización comercial.</p>
+            </div>
+            <div class="w-full flex flex-col gap-3">
+                <div class="relative w-full">
+                    <i class="fa-solid fa-key absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                    <input type="password" id="global-password-input" onkeydown="if(event.key === 'Enter') verifyGlobalPassword()" placeholder="Escriba la clave de acceso aquí..." class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all tracking-wide text-slate-700">
+                </div>
+                <div id="password-error-msg" class="hidden text-rose-600 font-semibold text-[11px] flex items-center gap-1 pl-1">
+                    <i class="fa-solid fa-circle-exclamation"></i> Clave incorrecta. Inténtelo de nuevo.
+                </div>
+            </div>
+            <button onclick="verifyGlobalPassword()" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md transition-all flex items-center justify-center gap-2">
+                <i class="fa-solid fa-shield-checkmark"></i> Verificar Identidad
+            </button>
+        </div>
+    </div>
+
     <header class="bg-gradient-to-r from-blue-800 to-indigo-900 text-white shadow-md sticky top-0 z-40">
         <div class="max-w-7xl mx-auto px-4 py-3 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center gap-4">
             <div class="flex items-center gap-3">
@@ -1018,9 +1041,34 @@
             }, 4000);
         }
 
-        // Arrancar la inicialización de la página tras cargar el window
+        // Función de autenticación de seguridad de la plataforma
+        window.verifyGlobalPassword = function() {
+            const input = document.getElementById('global-password-input');
+            const errorMsg = document.getElementById('password-error-msg');
+            const secretKey = "0920*";
+
+            if (input.value === secretKey) {
+                document.getElementById('password-screen').classList.add('hidden');
+                // Desbloquear e inicializar el enlace con los servicios de la base de datos
+                initApp();
+            } else {
+                errorMsg.classList.remove('hidden');
+                input.classList.add('border-rose-400', 'focus:ring-rose-500/20', 'focus:border-rose-500');
+                input.value = "";
+                input.focus();
+                
+                if (typeof showToast === 'function') {
+                    showToast("Acceso denegado: Clave incorrecta.", "error");
+                }
+            }
+        };
+
+        // Interceptores del arranque nativo
         window.onload = function() {
-            initApp();
+            const input = document.getElementById('global-password-input');
+            if (input) {
+                input.focus();
+            }
         };
 
     </script>
