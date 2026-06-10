@@ -588,17 +588,7 @@
                 if (item.diasMora > 0) {
                     mapaClientes[identificadorCliente].vencido += val;
                 }
-            });
 
-            // Determinar Máximo Deudor Comercial
-            let maxClienteNombre = "Ninguno";
-            let maxClienteValor = 0;
-            Object.values(mapaClientes).forEach(cli => {
-                if (cli.total > maxClienteValor) {
-                    maxClienteValor = cli.total;
-                    maxClienteNombre = cli.nombre;
-                }
-            });
                 // Compilación contable por vendedor
                 if (!mapaVendedores[nombreAsesor]) {
                     mapaVendedores[nombreAsesor] = { total: 0, vencido: 0 };
@@ -607,7 +597,7 @@
                 if (item.diasMora > 0) {
                     mapaVendedores[nombreAsesor].vencido += val;
                 }
-            });
+            }); // <--- Cierre correcto y limpio del ciclo principal
 
             // Inyección básica de tarjetas principales
             document.getElementById('stat-total-cartera').innerText = formatCurrency(total);
@@ -632,10 +622,10 @@
             // Determinar Máximo Deudor Comercial
             let maxClienteNombre = "Ninguno";
             let maxClienteValor = 0;
-            Object.entries(mapaClientes).forEach(([nombre, saldo]) => {
-                if (saldo > maxClienteValor) {
-                    maxClienteValor = saldo;
-                    maxClienteNombre = nombre;
+            Object.values(mapaClientes).forEach(cli => {
+                if (cli.total > maxClienteValor) {
+                    maxClienteValor = cli.total;
+                    maxClienteNombre = cli.nombre;
                 }
             });
             document.getElementById('report-max-deudor-name').innerText = maxClienteNombre;
