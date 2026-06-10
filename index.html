@@ -885,7 +885,29 @@
                 listaFacturas += `* ${indicador} Factura: ${f.factura} | Valor: ${formatCurrency(f.valor)} | Días de mora: ${f.diasMora}\n`;
             });
 
-            const template = `Estimado(a) ${client.cliente}, es un gusto saludarle de parte de FERCOSUR.\n\nNos comunicamos con usted para poner a su disposición información relevante sobre el estado actual de su cuenta:\n\n${listaFacturas}\nNuestro objetivo es brindarle el acompañamiento necesario para mantener su cuenta al día. Le agradeceríamos su gestión respecto al pago de esta obligación. Quedamos atentos a cualquier inquietud o si requiere asistencia adicional.\n\n¡Muchas gracias por confiar en nosotros!`;
+            // Analizador heurístico de género y tipo de entidad comercial
+            let encabezadoSaludo = `Estimado(a) ${client.cliente}`;
+            if (client.cliente) {
+                const nombreAnalisis = client.cliente.toUpperCase().trim();
+                const patronesEmpresariales = ['S.A.S', 'S.A.', 'SAS', 'ALMACEN', 'DISTRIBUIDORA', 'FERRETERIA', 'DEPOSITO', 'CONSTRUCTORA', 'MATERIALES', 'GRUPO', 'COOPERATIVA', 'DEPOSITOS'];
+                
+                const esEntidadCorporativa = patronesEmpresariales.some(termino => nombreAnalisis.includes(termino));
+                
+                if (esEntidadCorporativa) {
+                    encabezadoSaludo = `Estimados señores de ${client.cliente}`;
+                } else {
+                    const primerNombre = nombreAnalisis.split(' ')[0];
+                    const nombresFemeninosSinA = ['CARMEN', 'ISABEL', 'BEATRIZ', 'RUTH', 'LUZ', 'DORIS', 'AMPARO', 'MERCEDES', 'INES', 'EDITH', 'RAQUEL'];
+                    
+                    if (primerNombre.endsWith('A') || nombresFemeninosSinA.includes(primerNombre)) {
+                        encabezadoSaludo = `Estimada ${client.cliente}`;
+                    } else {
+                        encabezadoSaludo = `Estimado ${client.cliente}`;
+                    }
+                }
+            }
+
+            const template = `${encabezadoSaludo}, es un gusto saludarle de parte de FERCOSUR.\n\nNos comunicamos con usted para poner a su disposición información relevante sobre el estado actual de su cuenta:\n\n${listaFacturas}\nNuestro objetivo es brindarle el acompañamiento necesario para mantener su cuenta al día. Le agradeceríamos su gestión respecto al pago de esta obligación. Quedamos atentos a cualquier inquietud o si requiere asistencia adicional.\n\n*POR FAVOR REALIZAR LA CONSIGNACION CORRESPONDIENTE PARA EL PAGO DE SUS FACTURAS AL CONVENIO BANCOLOMBIA: _15020_; O AL BANCO BBVA POR CONVENIO SUPERGIROS  _38705_:*\n\n¡Muchas gracias por confiar en nosotros!`;
             
             document.getElementById('whatsapp-message-template').value = template;
             document.getElementById('whatsapp-modal').classList.remove('hidden');
