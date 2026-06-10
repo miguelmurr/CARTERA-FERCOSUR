@@ -205,9 +205,45 @@
                             </div>
                         </div>
                     </div>
-                </div> <!-- ESTE ES EL DIV QUE FALTABA PARA CERRAR LA SECCIÓN DE GRÁFICOS -->
+                </div> <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-2xs flex flex-col gap-4 border-t pt-5">
+                    <div>
+                        <h4 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-trophy text-amber-500 text-base"></i> Escalafón de Gestión de Recaudo (Vendedores Fercosur)
+                        </h4>
+                        <p class="text-xs text-slate-400">Clasificación de eficiencia comercial basada en morosidad, edad de cobro, cobertura de zona y flujo de caja inyectado.</p>
+                    </div>
+                    <div class="overflow-x-auto rounded-xl border border-slate-100 bg-slate-50/40">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr class="bg-slate-100/80 text-slate-500 font-bold uppercase tracking-wider border-b border-slate-200 text-[10px]">
+                                    <th class="py-3 px-4 text-center w-16">Puesto</th>
+                                    <th class="py-3 px-4">Asesor Comercial</th>
+                                    <th class="py-3 px-4 text-right">Índice Morosidad</th>
+                                    <th class="py-3 px-4 text-center">Atraso Máximo</th>
+                                    <th class="py-3 px-4 text-right">Flujo Sano Total</th>
+                                    <th class="py-3 px-4 text-center w-36">Calificación Final</th>
+                                </tr>
+                            </tbody>
+                            <tbody id="ranking-vendedores-body" class="divide-y divide-slate-100 text-slate-600 font-semibold bg-white">
+                                <tr>
+                                    <td colspan="6" class="text-center py-6 text-slate-400">
+                                        <i class="fa-solid fa-spinner animate-spin mr-2"></i>Compilando registros contables para el ranking...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="bg-slate-50 rounded-xl p-3.5 border border-slate-100 text-[11px] text-slate-400 leading-relaxed">
+                        <span class="font-bold text-slate-600 uppercase tracking-wider text-[10px] block mb-1.5"><i class="fa-solid fa-circle-info text-indigo-500 mr-1"></i>Ponderación del Sistema de Puntuación (1-100 pts):</span>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                            <div><strong>• Morosidad (40%):</strong> Relación porcentual entre saldo al día vs. saldo en mora de su zona.</div>
+                            <div><strong>• Antigüedad (30%):</strong> Penalización matemática por documentos estancados en semáforo rojo.</div>
+                            <div><strong>• Cobertura (20%):</strong> Porcentaje de clientes de su ruta comercial que se mantienen 100% al día.</div>
+                            <div><strong>• Caja (10%):</strong> Proporción de volumen bruto de dinero sano ingresado frente al líder del equipo.</div>
+                        </div>
+                    </div>
+                </div>
 
-                <!-- Barra informativa de confirmación para subir a Firebase -->
                 <div id="upload-action-bar" class="hidden flex flex-col sm:flex-row items-center justify-between p-4 bg-amber-50 rounded-2xl border border-amber-200 gap-4">
                     <div class="flex items-center gap-3">
                         <div class="h-10 w-10 bg-amber-100 text-amber-700 rounded-xl flex items-center justify-center">
@@ -228,7 +264,6 @@
                     </div>
                 </div>
 
-                <!-- Barra de búsqueda y filtros -->
                 <div class="flex flex-col lg:flex-row gap-4 justify-between items-center border-t border-slate-100 pt-6">
                     <div>
                         <h3 class="text-base font-bold text-slate-800">Filtros y Consultas rápidas</h3>
@@ -236,7 +271,6 @@
                     </div>
                     
                     <div class="flex flex-col sm:flex-row gap-3 w-full lg:w-auto items-center">
-                        <!-- Buscador Global -->
                         <div class="relative w-full sm:w-64">
                             <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
                             <input type="text" id="search-input" oninput="toggleClearButton(); applyFilters()" placeholder="Buscar cliente, NIT o factura..." class="w-full pl-10 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all">
@@ -563,10 +597,10 @@
             const uniqueClients = new Set();
             const uniqueVendors = new Set();
 
-            // Estructuras de acumulación contable para el informe analítico
             const mapaClientes = {};
             const mapaVendedores = {};
 
+            // 1. COMPILACIÓN DE DATOS FILTRADOS OPERATIVOS
             dataToCalculate.forEach(item => {
                 const val = parseFloat(item.valor) || 0;
                 total += val;
@@ -586,7 +620,7 @@
                     uniqueVendors.add(item.vendedor.trim());
                 }
 
-               // Compilación contable por cliente
+                // Compilación por cliente
                 if (!mapaClientes[identificadorCliente]) {
                     mapaClientes[identificadorCliente] = { nombre: identificadorCliente, total: 0, vencido: 0 };
                 }
@@ -595,7 +629,7 @@
                     mapaClientes[identificadorCliente].vencido += val;
                 }
 
-                // Compilación contable por vendedor
+                // Compilación por vendedor
                 if (!mapaVendedores[nombreAsesor]) {
                     mapaVendedores[nombreAsesor] = { nombre: nombreAsesor, total: 0, vencido: 0, maxMora: 0 };
                 }
@@ -616,7 +650,7 @@
             document.getElementById('stat-total-clientes').innerText = uniqueClients.size;
             document.getElementById('stat-vendedores').innerText = uniqueVendors.size;
 
-            // 1. CÁLCULO DE MÉTRICAS DEL INFORME DE RIESGO
+            // 2. RENDIMIENTO E INFORME DE CONTROL DE RIESGO
             const indiceMora = total > 0 ? Math.round((totalVencido / total) * 100) : 0;
             document.getElementById('report-indice-mora').innerText = `${indiceMora}%`;
             
@@ -628,7 +662,6 @@
             const totalClientesUnicos = uniqueClients.size || 1;
             document.getElementById('report-ticket-promedio').innerText = formatCurrency(total / totalClientesUnicos);
 
-            // Determinar Máximo Deudor Comercial
             let maxClienteNombre = "Ninguno";
             let maxClienteValor = 0;
             Object.values(mapaClientes).forEach(cli => {
@@ -640,7 +673,6 @@
             document.getElementById('report-max-deudor-name').innerText = maxClienteNombre;
             document.getElementById('report-max-deudor-value').innerText = formatCurrency(maxClienteValor);
 
-            // Determinar Asesor con Mayor Riesgo de Mora aplicando la fórmula contable unificada
             let maxAsesorNombre = "Ninguno";
             let maxAsesorMora = 0;
             let maxAsesorScore = -1;
@@ -656,44 +688,37 @@
             document.getElementById('report-max-vendedor-name').innerText = maxAsesorNombre;
             document.getElementById('report-max-vendedor-value').innerText = formatCurrency(maxAsesorMora);
 
-
-           // 2. RENDERIZADO GRÁFICO INTERACTIVO (CHART.JS)
-            // Destrucción de instancias previas para evitar desbordamiento de memoria y fallos de renderizado
+            // 3. RENDERIZADO DE GRÁFICOS (CHART.JS)
             if (instanceChartDistribucion) instanceChartDistribucion.destroy();
             if (instanceChartVendedores) instanceChartVendedores.destroy();
 
             const carteraSana = total - totalVencido;
 
-           // Inicialización Gráfico de Torta - Distribución de Estado de Cuenta
             const ctxDist = document.getElementById('chart-distribucion').getContext('2d');
             instanceChartDistribucion = new Chart(ctxDist, {
                 type: 'doughnut',
                 data: {
                     labels: ['Cartera al Día', 'Cartera Vencida'],
                     datasets: [{
-                
                         data: [carteraSana, totalVencido],
                         backgroundColor: ['#10b981', '#f43f5e'],
                         borderWidth: 2,
                         hoverOffset: 4
-              
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                   
                     plugins: {
                         legend: { position: 'bottom', labels: { boxWidth: 12, font: { family: 'Inter', size: 10 } } }
                     }
                 }
             });
 
-            // 3. PROCESAMIENTO DE SCORE DE RIESGO COMERCIAL PARA EL TOP 5 DE CLIENTES CRÍTICOS (Aislado del buscador)
+            // 4. TOP 5 CLIENTES CRÍTICOS (Aislado de la caja de búsqueda)
             const currentVendor = document.getElementById('vendedor-select').value;
             const mapaClientesTop5 = {};
             
-            // Recorremos la base completa para calcular el riesgo real de la zona sin importar lo que se busque en la tabla
             portfolioData.forEach(item => {
                 if (currentVendor !== 'todos' && item.vendedor !== currentVendor) {
                     return;
@@ -726,7 +751,6 @@
                 };
             });
 
-            // Ordenamos de forma descendente basándonos en la fórmula y extraemos el Top 5
             const top5Criticos = candidatosRiesgo
                 .filter(c => c.vencido > 0)
                 .sort((a, b) => b.score - a.score)
@@ -734,7 +758,6 @@
             const labelsTop5 = top5Criticos.map(c => c.nombre.length > 18 ? c.nombre.substring(0, 16) + '..' : c.nombre);
             const dataValoresTop5 = top5Criticos.map(c => c.vencido);
 
-            // Inicialización Gráfico de Barras Horizontales - Top 5 de Riesgo Absoluto
             const ctxVend = document.getElementById('chart-vendedores').getContext('2d');
             instanceChartVendedores = new Chart(ctxVend, {
                 type: 'bar',
@@ -743,26 +766,21 @@
                     datasets: [{
                         label: 'Cartera Vencida',
                         data: dataValoresTop5.length > 0 ? dataValoresTop5 : [0],
-                        backgroundColor: '#e11d48', // Color de alerta intensa (rose-600)
+                        backgroundColor: '#e11d48',
                         borderRadius: 6,
                         barThickness: 16
                     }]
                 },
                 options: {
-                    indexAxis: 'y', // Cambia el gráfico a formato horizontal para leer los nombres perfectamente
+                    indexAxis: 'y',
                     responsive: true,
                     maintainAspectRatio: false,
                     scales: {
-                        x: { 
-                            ticks: { font: { family: 'Inter', size: 8 }, callback: value => '$' + value.toLocaleString('es-CO') }
-                        },
-                        y: { 
-                            grid: { display: false }, 
-                            ticks: { font: { family: 'Inter', size: 9, weight: 'bold' } } 
-                        }
+                        x: { ticks: { font: { family: 'Inter', size: 8 }, callback: value => '$' + value.toLocaleString('es-CO') } },
+                        y: { grid: { display: false }, ticks: { font: { family: 'Inter', size: 9, weight: 'bold' } } }
                     },
                     plugins: {
-                        legend: { display: false }, // Ocultamos leyenda porque el título del cuadro ya es explícito
+                        legend: { display: false },
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
@@ -774,9 +792,163 @@
                     }
                 }
             });
+
+            // 5. COMPILACIÓN MATEMÁTICA DEL ESCALAFÓN DE ASESORES (RANKING GLOBAL)
+            const mapaRankingVend = {};
+            const clientesPorVendedor = {};
+            const clientesAlDiaPorVendedor = {};
+
+            portfolioData.forEach(item => {
+                const nombreAsesor = item.vendedor ? item.vendedor.trim() : "Sin Asesor";
+                const nombreAsesorUpper = nombreAsesor.toUpperCase();
+
+                // FILTROS OBLIGATORIOS DE EXCLUSIÓN COMERCIAL
+                if (nombreAsesorUpper === "SIN VENDEDOR" || 
+                    nombreAsesorUpper === "SIN ASESOR" || 
+                    nombreAsesorUpper === "" || 
+                    nombreAsesorUpper === "COMERCIALIZADORA DEL SUR FERCOSUR SAS") {
+                    return;
+                }
+
+                const val = parseFloat(item.valor) || 0;
+                const clienteKey = item.nit ? item.nit.toString().trim() : (item.cliente ? item.cliente.trim() : "sin_id");
+
+                if (!mapaRankingVend[nombreAsesor]) {
+                    mapaRankingVend[nombreAsesor] = { nombre: nombreAsesor, total: 0, vencido: 0, maxMora: 0 };
+                    clientesPorVendedor[nombreAsesor] = new Set();
+                    clientesAlDiaPorVendedor[nombreAsesor] = new Set();
+                }
+
+                mapaRankingVend[nombreAsesor].total += val;
+                if (item.diasMora > 0) {
+                    mapaRankingVend[nombreAsesor].vencido += val;
+                }
+                if (item.diasMora > mapaRankingVend[nombreAsesor].maxMora) {
+                    mapaRankingVend[nombreAsesor].maxMora = item.diasMora;
+                }
+
+                clientesPorVendedor[nombreAsesor].add(clienteKey);
+            });
+
+            // Identificar qué clientes de la zona se encuentran totalmente sanos
+            const estadoGlobalClientes = {};
+            portfolioData.forEach(item => {
+                const clienteKey = item.nit ? item.nit.toString().trim() : (item.cliente ? item.cliente.trim() : "sin_id");
+                if (!estadoGlobalClientes[clienteKey]) estadoGlobalClientes[clienteKey] = { tieneMora: false };
+                if (item.diasMora > 0) {
+                    estadoGlobalClientes[clienteKey].tieneMora = true;
+                }
+            });
+
+            portfolioData.forEach(item => {
+                const nombreAsesor = item.vendedor ? item.vendedor.trim() : "Sin Asesor";
+                const clienteKey = item.nit ? item.nit.toString().trim() : (item.cliente ? item.cliente.trim() : "sin_id");
+                if (clientesPorVendedor[nombreAsesor] && !estadoGlobalClientes[clienteKey].tieneMora) {
+                    clientesAlDiaPorVendedor[nombreAsesor].add(clienteKey);
+                }
+            });
+
+            let maxSanaGlobal = 0;
+            Object.values(mapaRankingVend).forEach(v => {
+                const sana = v.total - v.vencido;
+                if (sana > maxSanaGlobal) maxSanaGlobal = sana;
+            });
+            if (maxSanaGlobal === 0) maxSanaGlobal = 1;
+
+            // Algoritmo cruzado ponderado de Calificación Final
+            const listaRankeada = Object.values(mapaRankingVend).map(v => {
+                const totalMonto = v.total || 1;
+                const morosidadPct = (v.vencido / totalMonto) * 100;
+                
+                const scoreMorosidad = 100 - morosidadPct;
+                const scoreMoraMaxima = Math.max(0, 100 - (v.maxMora * 3.33));
+                
+                const totalClientesZona = clientesPorVendedor[v.nombre].size || 1;
+                const clientesSanosZona = clientesAlDiaPorVendedor[v.nombre].size;
+                const scoreCobertura = (clientesSanosZona / totalClientesZona) * 100;
+
+                const carteraSana = v.total - v.vencido;
+                const scoreFlujoCaja = (carteraSana / maxSanaGlobal) * 100;
+
+                const puntajeFinal = (scoreMorosidad * 0.4) + (scoreMoraMaxima * 0.3) + (scoreCobertura * 0.2) + (scoreFlujoCaja * 0.1);
+
+                return {
+                    nombre: v.nombre,
+                    total: v.total,
+                    vencido: v.vencido,
+                    sana: carteraSana,
+                    maxMora: v.maxMora,
+                    morosidad: morosidadPct,
+                    puntaje: Math.round(puntajeFinal)
+                };
+            });
+
+            // Ordenamiento estricto de Mayor a Peor Cobrador
+            listaRankeada.sort((a, b) => b.puntaje - a.puntaje);
+
+            // Inyección en la tabla HTML del escalafón
+            const rankingBody = document.getElementById('ranking-vendedores-body');
+            if (rankingBody) {
+                rankingBody.innerHTML = '';
+                if (listaRankeada.length === 0) {
+                    rankingBody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-slate-400">No hay asesores comerciales registrados para evaluar.</td></tr>`;
+                } else {
+                    listaRankeada.forEach((vendedor, index) => {
+                        const puesto = index + 1;
+                        let badgeColor = "bg-slate-100 text-slate-700 border border-slate-200";
+                        let rowHighlight = "";
+                        
+                        if (puesto === 1) {
+                            badgeColor = "bg-amber-100 text-amber-700 font-extrabold border border-amber-200 shadow-xs";
+                            rowHighlight = "bg-amber-50/10";
+                        } else if (puesto === 2) {
+                            badgeColor = "bg-slate-200 text-slate-800 font-bold border border-slate-300";
+                        } else if (puesto === 3) {
+                            badgeColor = "bg-orange-50 text-orange-700 font-bold border border-orange-200";
+                        }
+
+                        let semaforoPuntaje = "text-emerald-600 bg-emerald-50 border-emerald-100";
+                        if (vendedor.puntaje < 50) {
+                            semaforoPuntaje = "text-rose-600 bg-rose-50 border-rose-100 font-black animate-pulse";
+                        } else if (vendedor.puntaje < 80) {
+                            semaforoPuntaje = "text-amber-600 bg-amber-50 border-amber-100";
+                        }
+
+                        const tr = document.createElement('tr');
+                        tr.className = `hover:bg-slate-50/80 transition-colors ${rowHighlight}`;
+                        tr.innerHTML = `
+                            <td class="py-2.5 px-4 text-center">
+                                <span class="inline-flex items-center justify-center h-5 w-6 rounded-md text-[10px] ${badgeColor}">
+                                    ${puesto}
+                                </span>
+                            </td>
+                            <td class="py-2.5 px-4 font-bold text-slate-800 tracking-tight">
+                                <i class="fa-solid fa-user-tie text-[10px] mr-1.5 text-slate-400"></i>${vendedor.nombre}
+                            </td>
+                            <td class="py-2.5 px-4 text-right font-semibold text-slate-700">
+                                ${vendedor.morosidad.toFixed(1)}%
+                            </td>
+                            <td class="py-2.5 px-4 text-center">
+                                <span class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-semibold ${vendedor.maxMora > 15 ? 'bg-rose-50 text-rose-600' : 'bg-slate-100 text-slate-600'}">
+                                    ${vendedor.maxMora} días
+                                </span>
+                            </td>
+                            <td class="py-2.5 px-4 text-right font-bold text-slate-800">
+                                ${formatCurrency(vendedor.sana)}
+                            </td>
+                            <td class="py-2.5 px-4 text-center">
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${semaforoPuntaje}">
+                                    ${vendedor.puntaje} / 100
+                                </span>
+                            </td>
+                        `;
+                        rankingBody.appendChild(tr);
+                    });
+                }
+            }
         }
 
-        window.applyFilters = function() {
+       window.applyFilters = function() {
             const searchQuery = document.getElementById('search-input').value.trim();
             const selectedVendor = document.getElementById('vendedor-select').value;
             const filtrarSoloVencidos = document.getElementById('vencidos-checkbox').checked;
@@ -791,6 +963,8 @@
 
             const cleanedQuery = cleanText(searchQuery);
             const searchWords = cleanedQuery.split(/\s+/).filter(word => word.length > 0);
+            
+            filteredData = portfolioData.filter(item => {
 
             filteredData = portfolioData.filter(item => {
                 if (selectedVendor !== 'todos' && item.vendedor !== selectedVendor) {
@@ -1002,6 +1176,29 @@
         window.changePage = function(direction) {
             currentPage += direction;
             renderTable();
+        };
+
+        // Métodos de control interactivo para limpiar la barra de búsqueda
+        window.toggleClearButton = function() {
+            const input = document.getElementById('search-input');
+            const btn = document.getElementById('clear-search-btn');
+            if (input && btn) {
+                if (input.value.trim().length > 0) {
+                    btn.classList.remove('hidden');
+                } else {
+                    btn.classList.add('hidden');
+                }
+            }
+        };
+
+        window.clearSearchInput = function() {
+            const input = document.getElementById('search-input');
+            if (input) {
+                input.value = "";
+                window.toggleClearButton();
+                window.applyFilters();
+                input.focus();
+            }
         };
 
         // Detectar carga de archivos
