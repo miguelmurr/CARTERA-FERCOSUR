@@ -643,15 +643,29 @@
             return parseFloat(val.toString().replace(/[^0-9.-]+/g, "")) || 0;
         }
 
-        function formatDateValue(val) {
+       function formatDateValue(val) {
             if (!val) return "";
-            if (typeof val === 'number') {
-                // Es una fecha de tipo serial de Excel
-                const date = XLSX.utils.format_cell({ t: 'd', v: val });
-                return date ? date : "";
+            
+            // Si la librería ya lo convirtió en un objeto Fecha de JavaScript
+            if (val instanceof Date) {
+                if (isNaN(val.getTime())) return "";
+                return val.toISOString().split('T')[0];
             }
-            // Formatos de fecha clásicos
-            return val.toString();
+            
+            // Si es un número (el clásico número serial que genera Excel)
+            if (typeof val === 'number') {
+                // Conversión matemática exacta de formato Excel a Fecha real estándar
+                const date = new Date(Math.round((val - 25569) * 86400 * 1000));
+                return date.toISOString().split('T')[0];
+            }
+            
+            // Si es un texto común y corriente
+            let str = val.toString().trim();
+            // Si viene acompañado de horas (ej: "2026-05-30 00:00:00"), dejamos solo el día limpio
+            if (str.includes(" ")) {
+                str = str.split(" ")[0];
+            }
+            return str;
         }
 
         window.cancelUpload = function() {
