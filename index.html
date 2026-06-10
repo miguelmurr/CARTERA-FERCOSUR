@@ -1436,31 +1436,36 @@
                 return new Date(a.vence) - new Date(b.vence);
             });
 
-            // Construcción de listado de documentos y cálculo del acumulado total
-            let listaFacturas = "";
+            // Maquetación de la tabla de texto fija para WhatsApp
+            let tablaTexto = "```\n";
+            tablaTexto += "Factura  | Valor        | Días Mora\n";
+            tablaTexto += "---------+--------------+----------\n";
+            
             let acumuladoTotal = 0;
 
             facturasCliente.forEach(f => {
-                let indicador = "🟢"; 
-                if (f.diasMora > 15) {
-                    indicador = "⚠️";
-                } else if (f.diasMora > 10) {
-                    indicador = "🔴";
-                } else if (f.diasMora >= 1) {
-                    indicador = "🟡";
-                }
-                listaFacturas += `* ${indicador} Factura: ${f.factura} | ${formatCurrency(f.valor)} | Días de mora: ${f.diasMora}\n`;
+                // Forzamos anchos fijos rellenando con espacios a la derecha (padEnd) para encuadrar la cuadrícula
+                const fac = (f.factura || 'N/A').toString().padEnd(8, ' ');
+                const val = formatCurrency(f.valor).toString().padEnd(12, ' ');
+                const dias = (f.diasMora || 0).toString().padEnd(9, ' ');
+                
+                tablaTexto += `${fac} | ${val} | ${dias}\n`;
                 acumuladoTotal += parseFloat(f.valor) || 0;
             });
 
-            // Formateador dinámico de fecha en texto localizado (ej: "10 de junio de 2026")
+            tablaTexto += "---------+--------------+----------\n";
+            tablaTexto += `TOTAL:   | ${formatCurrency(acumuladoTotal).toString().padEnd(12, ' ')} |\n`;
+            tablaTexto += "
+```";
+
+            // Formateador dinámico de fecha en texto localizado
             const opcionesFecha = { year: 'numeric', month: 'long', day: 'numeric' };
             const fechaCorteTexto = new Date().toLocaleDateString('es-CO', opcionesFecha);
 
             const nombreDestinatario = client.cliente ? client.cliente.trim() : 'CLIENTE S.N.';
 
-            // Construcción final estructurada del machote corporativo con el Total acumulado debajo de la lista
-            const template = `Cordial saludo, *${nombreDestinatario}*. 👋\n\nApreciado cliente, esperamos que se encuentre muy bien. ✨\n\nDesde el departamento de cartera de FERCOSUR, compartimos con usted su estado de cuenta a corte del *${fechaCorteTexto}*. Por favor, verifique que los valores sean correctos y coincidan con sus registros 📝:\n\n${listaFacturas}*Total:* ${formatCurrency(acumuladoTotal)}\n\nSi nota alguna inconsistencia, por favor comuníquese con nosotros para revisarlo con gusto a los números: 3182919997 o 3228606754. 📞\n\n💳 *Canales de pago autorizados (Convenios):*\n• Bancolombia: Convenio 15020\n• SuperGIROS (BBVA): Convenio 38705\n\n⚠️ *Nota de seguridad:* Si realiza pagos en efectivo al vendedor, exija siempre su recibo original de pago debidamente diligenciado en su presencia. Recuerde que FERCOSUR no se hace responsable por pagos con recibos no autorizados.\n\nQuedamos atentos a sus comentarios.\n\nAtentamente,\n*Yadira Miranda*\nJefe de Cartera - FERCOSUR 🤝`;
+            // Construcción del machote final con la tabla integrada
+            const template = `Cordial saludo, *${nombreDestinatario}*. 👋\n\nApreciado cliente, esperamos que se encuentre muy bien. ✨\n\nDesde el departamento de cartera de FERCOSUR, compartimos con usted su estado de cuenta a corte del *${fechaCorteTexto}*. Por favor, verifique que los valores sean correctos y coincidan con sus registros 📝:\n\n${tablaTexto}\n\nSi nota alguna inconsistencia, por favor comuníquese con nosotros para revisarlo con gusto a los números: 3182919997 o 3228606754. 📞\n\n💳 *Canales de pago autorizados (Convenios):*\n• Bancolombia: Convenio 15020\n• SuperGIROS (BBVA): Convenio 38705\n\n⚠️ *Nota de seguridad:* Si realiza pagos en efectivo al vendedor, exija siempre su recibo original de pago debidamente diligenciado en su presencia. Recuerde que FERCOSUR no se hace responsable por pagos con recibos no autorizados.\n\nQuedamos atentos a sus comentarios.\n\nAtentamente,\n*Yadira Miranda*\nJefe de Cartera - FERCOSUR 🤝`;
             
             document.getElementById('whatsapp-message-template').value = template;
             document.getElementById('whatsapp-modal').classList.remove('hidden');
