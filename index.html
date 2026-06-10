@@ -205,43 +205,6 @@
                             </div>
                         </div>
                     </div>
-                </div> <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-2xs flex flex-col gap-4 border-t pt-5">
-                    <div>
-                        <h4 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-                            <i class="fa-solid fa-trophy text-amber-500 text-base"></i> Escalafón de Gestión de Recaudo (Vendedores Fercosur)
-                        </h4>
-                        <p class="text-xs text-slate-400">Clasificación de eficiencia comercial basada en morosidad, edad de cobro, cobertura de zona y flujo de caja inyectado.</p>
-                    </div>
-                    <div class="overflow-x-auto rounded-xl border border-slate-100 bg-slate-50/40">
-                        <table class="w-full text-left border-collapse text-xs">
-                            <thead>
-                                <tr class="bg-slate-100/80 text-slate-500 font-bold uppercase tracking-wider border-b border-slate-200 text-[10px]">
-                                    <th class="py-3 px-4 text-center w-16">Puesto</th>
-                                    <th class="py-3 px-4">Asesor Comercial</th>
-                                    <th class="py-3 px-4 text-right">Índice Morosidad</th>
-                                    <th class="py-3 px-4 text-center">Atraso Máximo</th>
-                                    <th class="py-3 px-4 text-right">Flujo Sano Total</th>
-                                    <th class="py-3 px-4 text-center w-36">Calificación Final</th>
-                                </tr>
-                            </tbody>
-                            <tbody id="ranking-vendedores-body" class="divide-y divide-slate-100 text-slate-600 font-semibold bg-white">
-                                <tr>
-                                    <td colspan="6" class="text-center py-6 text-slate-400">
-                                        <i class="fa-solid fa-spinner animate-spin mr-2"></i>Compilando registros contables para el ranking...
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="bg-slate-50 rounded-xl p-3.5 border border-slate-100 text-[11px] text-slate-400 leading-relaxed">
-                        <span class="font-bold text-slate-600 uppercase tracking-wider text-[10px] block mb-1.5"><i class="fa-solid fa-circle-info text-indigo-500 mr-1"></i>Ponderación del Sistema de Puntuación (1-100 pts):</span>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                            <div><strong>• Morosidad (40%):</strong> Relación porcentual entre saldo al día vs. saldo en mora de su zona.</div>
-                            <div><strong>• Antigüedad (30%):</strong> Penalización matemática por documentos estancados en semáforo rojo.</div>
-                            <div><strong>• Cobertura (20%):</strong> Porcentaje de clientes de su ruta comercial que se mantienen 100% al día.</div>
-                            <div><strong>• Caja (10%):</strong> Proporción de volumen bruto de dinero sano ingresado frente al líder del equipo.</div>
-                        </div>
-                    </div>
                 </div>
 
                 <div id="upload-action-bar" class="hidden flex flex-col sm:flex-row items-center justify-between p-4 bg-amber-50 rounded-2xl border border-amber-200 gap-4">
@@ -295,11 +258,62 @@
                             </span>
                         </label>
 
+                        <!-- Botón para ver el Escalafón Comercial -->
+                        <button onclick="toggleRankingPanel()" class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-xl flex items-center justify-center gap-2 text-xs font-bold shadow-sm transition-all w-full sm:w-auto shrink-0" title="Ver Ranking de Vendedores">
+                            <i class="fa-solid fa-trophy text-sm"></i>
+                            <span>Ver Ranking</span>
+                        </button>
+
                         <button onclick="document.getElementById('excel-file').click()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl flex items-center justify-center gap-2 text-xs font-bold shadow-sm transition-all w-full sm:w-auto" title="Subir nuevo reporte diario Excel">
                             <i class="fa-solid fa-file-excel text-base"></i>
                             <span>Cargar Excel</span>
                         </button>
                         <input type="file" id="excel-file" accept=".xlsx, .xls, .csv" class="hidden" />
+                    </div>
+                </div>
+
+                <!-- Panel de Escalafón de Rendimiento de Recaudo Asesores (Oculto por defecto con clase hidden) -->
+                <div id="ranking-vendedores-container" class="hidden bg-slate-50/50 p-5 rounded-2xl border border-slate-200 flex flex-col gap-4 border-t animate-in fade-in slide-in-from-top-4 duration-300">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h4 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                                <i class="fa-solid fa-trophy text-amber-500 text-base"></i> Escalafón de Gestión de Recaudo (Vendedores Fercosur)
+                            </h4>
+                            <p class="text-xs text-slate-400">Clasificación de eficiencia comercial basada en morosidad, edad de cobro, cobertura de zona y flujo de caja inyectado.</p>
+                        </div>
+                        <button onclick="toggleRankingPanel()" class="text-slate-400 hover:text-slate-600 text-sm p-1">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                    <div class="overflow-x-auto rounded-xl border border-slate-100 bg-white">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr class="bg-slate-100/80 text-slate-500 font-bold uppercase tracking-wider border-b border-slate-200 text-[10px]">
+                                    <th class="py-3 px-4 text-center w-16">Puesto</th>
+                                    <th class="py-3 px-4">Asesor Comercial</th>
+                                    <th class="py-3 px-4 text-right">Índice Morosidad</th>
+                                    <th class="py-3 px-4 text-center">Atraso Máximo</th>
+                                    <th class="py-3 px-4 text-right">Flujo Sano Total</th>
+                                    <th class="py-3 px-4 text-center w-36">Calificación Final</th>
+                                </tr>
+                            </tbody>
+                            <tbody id="ranking-vendedores-body" class="divide-y divide-slate-100 text-slate-600 font-semibold bg-white">
+                                <tr>
+                                    <td colspan="6" class="text-center py-6 text-slate-400">
+                                        <i class="fa-solid fa-spinner animate-spin mr-2"></i>Compilando registros contables para el ranking...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="bg-white rounded-xl p-3.5 border border-slate-100 text-[11px] text-slate-400 leading-relaxed">
+                        <span class="font-bold text-slate-600 uppercase tracking-wider text-[10px] block mb-1.5"><i class="fa-solid fa-circle-info text-indigo-500 mr-1"></i>Ponderación del Sistema de Puntuación (1-100 pts):</span>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                            <div><strong>• Morosidad (40%):</strong> Relación porcentual entre saldo al día vs. saldo en mora de su zona.</div>
+                            <div><strong>• Antigüedad (30%):</strong> Penalización matemática por documentos estancados en semáforo rojo.</div>
+                            <div><strong>• Cobertura (20%):</strong> Porcentaje de clientes de su ruta comercial que se mantienen 100% al día.</div>
+                            <div><strong>• Caja (10%):</strong> Proporción de volumen bruto de dinero sano ingresado frente al líder del equipo.</div>
+                        </div>
                     </div>
                 </div>
 
@@ -800,9 +814,9 @@
 
             portfolioData.forEach(item => {
                 const nombreAsesor = item.vendedor ? item.vendedor.trim() : "Sin Asesor";
-                const nombreAsesorUpper = nombreAsesor.toUpperCase();
+                // Limpieza absoluta de asteriscos y espacios extraños para la evaluación de filtros de exclusión
+                const nombreAsesorUpper = nombreAsesor.toUpperCase().replace(/\*/g, '').trim();
 
-                // FILTROS OBLIGATORIOS DE EXCLUSIÓN COMERCIAL
                 if (nombreAsesorUpper === "SIN VENDEDOR" || 
                     nombreAsesorUpper === "SIN ASESOR" || 
                     nombreAsesorUpper === "" || 
@@ -1196,6 +1210,28 @@
                 window.toggleClearButton();
                 window.applyFilters();
                 input.focus();
+            }
+        };
+
+        // Controlador dinámico para ocultar/mostrar el Escalafón de Vendedores (Botón Trofeo)
+        window.toggleRankingPanel = function() {
+            const container = document.getElementById('ranking-vendedores-container');
+            if (container) {
+                const isHidden = container.classList.toggle('hidden');
+                if (!isHidden) {
+                    if (typeof filteredData !== 'undefined' && filteredData.length > 0) {
+                        const visibleInvoices = [];
+                        if (typeof groupedData !== 'undefined') {
+                            groupedData.forEach(client => {
+                                visibleInvoices.push(...client.facturas);
+                            });
+                        }
+                        calculateAndRenderStats(visibleInvoices.length > 0 ? visibleInvoices : filteredData);
+                    } else {
+                        calculateAndRenderStats(portfolioData);
+                    }
+                    container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
             }
         };
 
