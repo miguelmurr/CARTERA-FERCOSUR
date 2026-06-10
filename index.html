@@ -161,12 +161,14 @@
                         </div>
                     </div>
 
-                    <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100 flex flex-col gap-4">
-                        <h4 class="text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center gap-2 border-b border-slate-200 pb-2">
+                    <!-- Panel de Informe Ejecutivo Técnico -->
+                    <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-col gap-3">
+                        <h4 class="text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center gap-2 border-b border-slate-200 pb-1.5">
                             <i class="fa-solid fa-file-contract text-indigo-600 text-sm"></i> Informe de Control de Riesgo
                         </h4>
-                        <div class="flex flex-col gap-3.5 flex-1 justify-between py-1">
-                            <div class="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-100 shadow-2xs gap-2">
+                        <div class="flex flex-col gap-2.5 flex-1 justify-between py-0.5">
+                            <!-- Índice de Morosidad -->
+                            <div class="flex items-center justify-between bg-white p-2.5 rounded-xl border border-slate-100 shadow-2xs gap-2">
                                 <div>
                                     <span class="text-[11px] font-semibold text-slate-400 block uppercase tracking-wide">Índice de Morosidad</span>
                                     <span id="report-indice-mora-texto" class="text-xs text-slate-500 font-medium">Cargando análisis...</span>
@@ -175,7 +177,8 @@
                                     <span id="report-indice-mora" class="text-lg font-black text-rose-600">0%</span>
                                 </div>
                             </div>
-                            <div class="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-100 shadow-2xs gap-2">
+                            <!-- Ticket Promedio -->
+                            <div class="flex items-center justify-between bg-white p-2.5 rounded-xl border border-slate-100 shadow-2xs gap-2">
                                 <div>
                                     <span class="text-[11px] font-semibold text-slate-400 block uppercase tracking-wide">Deuda Promedio por Cliente</span>
                                     <span class="text-[10px] text-slate-400 font-medium">Saldo total / Clientes activos</span>
@@ -184,14 +187,16 @@
                                     <span id="report-ticket-promedio" class="text-sm font-extrabold text-slate-800">$0</span>
                                 </div>
                             </div>
-                            <div class="bg-white p-3 rounded-xl border border-slate-100 shadow-2xs flex flex-col gap-1">
+                            <!-- Cliente Máximo Deudor -->
+                            <div class="bg-white p-2.5 rounded-xl border border-slate-100 shadow-2xs flex flex-col gap-1">
                                 <span class="text-[11px] font-semibold text-slate-400 block uppercase tracking-wide">Máxima Concentración de Deuda</span>
                                 <div class="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:items-start">
                                     <span id="report-max-deudor-name" class="text-xs font-bold text-slate-700 break-words pr-2 leading-tight">Ninguno</span>
                                     <span id="report-max-deudor-value" class="text-xs font-extrabold text-slate-800 shrink-0 mt-0.5 sm:mt-0">$0</span>
                                 </div>
                             </div>
-                            <div class="bg-white p-3 rounded-xl border border-slate-100 shadow-2xs flex flex-col gap-1">
+                            <!-- Vendedor con Mayor Mora -->
+                            <div class="bg-white p-2.5 rounded-xl border border-slate-100 shadow-2xs flex flex-col gap-1">
                                 <span class="text-[11px] font-semibold text-slate-400 block uppercase tracking-wide">Mayor Riesgo de Cobro por Asesor</span>
                                 <div class="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:items-start">
                                     <span id="report-max-vendedor-name" class="text-xs font-bold text-slate-700 break-words pr-2 leading-tight">Ninguno</span>
@@ -200,7 +205,6 @@
                             </div>
                         </div>
                     </div>
-                </div>
                 <div id="upload-action-bar" class="hidden flex flex-col sm:flex-row items-center justify-between p-4 bg-amber-50 rounded-2xl border border-amber-200 gap-4">
                     <div class="flex items-center gap-3">
                         <div class="h-10 w-10 bg-amber-100 text-amber-700 rounded-xl flex items-center justify-center">
