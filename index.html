@@ -404,27 +404,19 @@
             processAndRenderData();
         }
 
-        // Genera sumatorias de cartera y carga los filtros de vendedores
+        // Genera días de mora y carga los filtros globales de vendedores
         function processAndRenderData() {
             vendorsList.clear();
-            let total = 0;
-            let totalVencido = 0;
-            let morososCount = 0;
-            const uniqueClients = new Set();
             const hoy = new Date();
 
             portfolioData.forEach(item => {
-                // Normalizar valores monetarios
                 const val = parseFloat(item.valor) || 0;
-                total += val;
 
                 // Evaluamos si la factura está vencida según la columna contable del Excel
                 let estaVencida = false;
                 if (item.sinVencerExcel !== undefined) {
-                    // Si 'Sin vencer' es 0 y tiene saldo positivo, la factura tiene mora contable real
                     estaVencida = item.sinVencerExcel === 0 && val > 0;
                 } else {
-                    // Respaldo matemático clásico por si el registro no tiene esa columna
                     const fechaVence = new Date(item.vence);
                     const diferenciaTiempo = hoy.getTime() - fechaVence.getTime();
                     estaVencida = diferenciaTiempo > 0;
@@ -433,7 +425,6 @@
                 // Asignamos los días de mora de forma segura para las alertas
                 item.diasMora = estaVencida ? 1 : 0;
                 
-                // Si la fecha es válida y no tiene un guión, calculamos los días exactos para el semáforo de WhatsApp
                 if (item.vence && item.vence !== "-  -") {
                     const partes = item.vence.split("-");
                     if (partes.length === 3) {
@@ -446,27 +437,10 @@
                     }
                 }
 
-                if (estaVencida) {
-                    totalVencido += val;
-                    morososCount++;
-                }
-
                 if (item.vendedor) {
                     vendorsList.add(item.vendedor.trim());
                 }
-                
-                if (item.nit) {
-                    uniqueClients.add(item.nit);
-                }
             });
-
-            // Actualizar tarjetas de estadísticas en pantalla
-            document.getElementById('stat-total-cartera').innerText = formatCurrency(total);
-            document.getElementById('stat-total-count').innerText = `${portfolioData.length} facturas registradas`;
-            document.getElementById('stat-vencida-cartera').innerText = formatCurrency(totalVencido);
-            document.getElementById('stat-vencida-count').innerText = `${morososCount} facturas vencidas`;
-            document.getElementById('stat-total-clientes').innerText = uniqueClients.size;
-            document.getElementById('stat-vendedores').innerText = vendorsList.size;
 
             // Reconstruir selector de vendedores para filtro
             const selectVendors = document.getElementById('vendedor-select');
@@ -477,11 +451,44 @@
                 opt.innerText = vendor;
                 selectVendors.appendChild(opt);
             });
-
+            
             applyFilters();
         }
 
         let groupedData = [];
+
+        // Calcula y actualiza las tarjetas de estadísticas superiores en tiempo real
+        function calculateAndRenderStats(dataToCalculate) {
+            let total = 0;
+            let totalVencido = 0;
+            let morososCount = 0;
+            const uniqueClients = new Set();
+            const uniqueVendors = new Set();
+
+            dataToCalculate.forEach(item => {
+                const val = parseFloat(item.valor) || 0;
+                total += val;
+
+                if (item.diasMora > 0) {
+                    totalVencido += val;
+                    morososCount++;
+                }
+
+                if (item.nit) {
+                    uniqueClients.add(item.nit);
+                }
+                if (item.vendedor) {
+                    uniqueVendors.add(item.vendedor.trim());
+                }
+            });
+
+            document.getElementById('stat-total-cartera').innerText = formatCurrency(total);
+            document.getElementById('stat-total-count').innerText = `${dataToCalculate.length} facturas registradas`;
+            document.getElementById('stat-vencida-cartera').innerText = formatCurrency(totalVencido);
+            document.getElementById('stat-vencida-count').innerText = `${morososCount} facturas vencidas`;
+            document.getElementById('stat-total-clientes').innerText = uniqueClients.size;
+            document.getElementById('stat-vendedores').innerText = uniqueVendors.size;
+        }
 
         window.applyFilters = function() {
             const searchQuery = document.getElementById('search-input').value.toLowerCase().trim();
@@ -504,6 +511,9 @@
 
                 return true;
             });
+
+            // Recalcular estadísticas superiores según el filtro aplicado (Vendedor y/o Buscador)
+            calculateAndRenderStats(filteredData);
 
             // Agrupación contable de facturas bajo una única entidad cliente
             const groups = {};
