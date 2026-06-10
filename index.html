@@ -1436,8 +1436,10 @@
                 return new Date(a.vence) - new Date(b.vence);
             });
 
-            // Construcción limpia de listado de documentos omitiendo la palabra "Valor:"
+            // Construcción de listado de documentos y cálculo del acumulado total
             let listaFacturas = "";
+            let acumuladoTotal = 0;
+
             facturasCliente.forEach(f => {
                 let indicador = "🟢"; 
                 if (f.diasMora > 15) {
@@ -1448,6 +1450,7 @@
                     indicador = "🟡";
                 }
                 listaFacturas += `* ${indicador} Factura: ${f.factura} | ${formatCurrency(f.valor)} | Días de mora: ${f.diasMora}\n`;
+                acumuladoTotal += parseFloat(f.valor) || 0;
             });
 
             // Formateador dinámico de fecha en texto localizado (ej: "10 de junio de 2026")
@@ -1456,13 +1459,12 @@
 
             const nombreDestinatario = client.cliente ? client.cliente.trim() : 'CLIENTE S.N.';
 
-            // Construcción final estructurada del machote corporativo suavizado
-            const template = `Cordial saludo, *${nombreDestinatario}*. 👋\n\nApreciado cliente, esperamos que se encuentre muy bien. ✨\n\nDesde el departamento de cartera de FERCOSUR, compartimos con usted su estado de cuenta a corte del *${fechaCorteTexto}*. Por favor, verifique que los valores sean correctos y coincidan con sus registros 📝:\n\n${listaFacturas}\nSi nota alguna inconsistencia, por favor comuníquese con nosotros para revisarlo con gusto a los números: 3182919997 o 3228606754. 📞\n\n💳 *Canales de pago autorizados (Convenios):*\n• Bancolombia: Convenio 15020\n• SuperGIROS (BBVA): Convenio 38705\n\n⚠️ *Nota de seguridad:* Si realiza pagos en efectivo al vendedor, exija siempre su recibo original de pago debidamente diligenciado en su presencia. Para su tranquilidad, recuerde que FERCOSUR no se hace responsable por pagos con recibos no autorizados.\n\nQuedamos atentos a sus comentarios.\n\nAtentamente,\n*Yadira Miranda*\nJefe de Cartera - FERCOSUR 🤝`;
+            // Construcción final estructurada del machote corporativo con el Total acumulado debajo de la lista
+            const template = `Cordial saludo, *${nombreDestinatario}*. 👋\n\nApreciado cliente, esperamos que se encuentre muy bien. ✨\n\nDesde el departamento de cartera de FERCOSUR, compartimos con usted su estado de cuenta a corte del *${fechaCorteTexto}*. Por favor, verifique que los valores sean correctos y coincidan con sus registros 📝:\n\n${listaFacturas}*Total:* ${formatCurrency(acumuladoTotal)}\n\nSi nota alguna inconsistencia, por favor comuníquese con nosotros para revisarlo con gusto a los números: 3182919997 o 3228606754. 📞\n\n💳 *Canales de pago autorizados (Convenios):*\n• Bancolombia: Convenio 15020\n• SuperGIROS (BBVA): Convenio 38705\n\n⚠️ *Nota de seguridad:* Si realiza pagos en efectivo al vendedor, exija siempre su recibo original de pago debidamente diligenciado en su presencia. Recuerde que FERCOSUR no se hace responsable por pagos con recibos no autorizados.\n\nQuedamos atentos a sus comentarios.\n\nAtentamente,\n*Yadira Miranda*\nJefe de Cartera - FERCOSUR 🤝`;
             
             document.getElementById('whatsapp-message-template').value = template;
             document.getElementById('whatsapp-modal').classList.remove('hidden');
         };
-
         window.closeWhatsAppModal = function() {
             document.getElementById('whatsapp-modal').classList.add('hidden');
             activeWhatsAppClient = null;
