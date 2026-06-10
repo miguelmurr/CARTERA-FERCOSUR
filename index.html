@@ -965,8 +965,6 @@
             const searchWords = cleanedQuery.split(/\s+/).filter(word => word.length > 0);
             
             filteredData = portfolioData.filter(item => {
-
-            filteredData = portfolioData.filter(item => {
                 if (selectedVendor !== 'todos' && item.vendedor !== selectedVendor) {
                     return false;
                 }
