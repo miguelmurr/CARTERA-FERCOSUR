@@ -419,13 +419,35 @@
                 const val = parseFloat(item.valor) || 0;
                 total += val;
 
-                // Calcular días de mora
-                const fechaVence = new Date(item.vence);
-                const diferenciaTiempo = hoy.getTime() - fechaVence.getTime();
-                const diasMora = Math.floor(diferenciaTiempo / (1000 * 3600 * 24));
-                item.diasMora = diasMora > 0 ? diasMora : 0;
+                // Evaluamos si la factura está vencida según la columna contable del Excel
+                let estaVencida = false;
+                if (item.sinVencerExcel !== undefined) {
+                    // Si 'Sin vencer' es 0 y tiene saldo positivo, la factura tiene mora contable real
+                    estaVencida = item.sinVencerExcel === 0 && val > 0;
+                } else {
+                    // Respaldo matemático clásico por si el registro no tiene esa columna
+                    const fechaVence = new Date(item.vence);
+                    const diferenciaTiempo = hoy.getTime() - fechaVence.getTime();
+                    estaVencida = diferenciaTiempo > 0;
+                }
 
-                if (item.diasMora > 0) {
+                // Asignamos los días de mora de forma segura para las alertas
+                item.diasMora = estaVencida ? 1 : 0;
+                
+                // Si la fecha es válida y no tiene un guión, calculamos los días exactos para el semáforo de WhatsApp
+                if (item.vence && item.vence !== "-  -") {
+                    const partes = item.vence.split("-");
+                    if (partes.length === 3) {
+                        const fechaVenceObj = new Date(partes[0], partes[1] - 1, partes[2]);
+                        if (!isNaN(fechaVenceObj.getTime())) {
+                            const diferenciaTiempo = hoy.getTime() - fechaVenceObj.getTime();
+                            const diasMoraCalculados = Math.floor(diferenciaTiempo / (1000 * 3600 * 24));
+                            item.diasMora = diasMoraCalculados > 0 ? diasMoraCalculados : (estaVencida ? 1 : 0);
+                        }
+                    }
+                }
+
+                if (estaVencida) {
                     totalVencido += val;
                     morososCount++;
                 }
@@ -603,6 +625,9 @@
                     // Regla inteligente para teléfonos: si Celular está vacío, usa Telefono
                     let celularDetectado = row['Celular'] || row['Telefono'] || "";
                     
+                    // Guardamos el valor de la columna 'Sin vencer' para saber la mora real de contabilidad
+                    let valorSinVencer = row['Sin vencer'] !== undefined ? cleanNumberValue(row['Sin vencer']) : undefined;
+                    
                     return {
                         cliente: row['Nombre tercero'] || "",
                         nit: row['Nit'] || "",
@@ -611,7 +636,8 @@
                         vence: formatDateValue(row['Fecha vencimiento']),
                         celular: celularDetectado,
                         vendedor: row['Vendedor'] || "",
-                        ciudad: row['Ciudad'] || "" // Guardamos la población en la memoria
+                        ciudad: row['Ciudad'] || "",
+                        sinVencerExcel: valorSinVencer
                     };
                 });
 
@@ -695,14 +721,35 @@
             }
 
             try {
-                // Procesamos TODO el archivo Excel sin límites ficticios.
-                // Como Firebase tiene un límite de 500 operaciones por lote (batch), dividimos los registros en bloques de 400 por seguridad.
+                // 1. LIMPIEZA PROFUNDA: Eliminamos todos los registros antiguos en Firestore para evitar que se duplique la plata
+                showToast("Limpiando registros antiguos en la nube...", "info");
+                const clientsColRef = collection(db, 'artifacts', appId, 'public', 'data', 'clients');
+                const oldDocsSnapshot = await getDocs(clientsColRef);
+                
+                let deleteBatch = writeBatch(db);
+                let deleteCounter = 0;
+                
+                for (const document of oldDocsSnapshot.docs) {
+                    deleteBatch.delete(document.ref);
+                    deleteCounter++;
+                    // Firebase limita los lotes a un máximo de 500 operaciones, ejecutamos de a 400
+                    if (deleteCounter >= 400) {
+                        await deleteBatch.commit();
+                        deleteBatch = writeBatch(db);
+                        deleteCounter = 0;
+                    }
+                }
+                if (deleteCounter > 0) {
+                    await deleteBatch.commit();
+                }
+
+                // 2. GUARDADO DE NUEVOS DATOS: Procesamos todo el archivo Excel por bloques de 400
+                showToast("Guardando la nueva cartera de Fercosur...", "info");
                 for (let i = 0; i < tempExcelData.length; i += 400) {
                     const batch = writeBatch(db);
                     const chunk = tempExcelData.slice(i, i + 400);
                     
                     chunk.forEach(item => {
-                        // Creamos una clave única por cada registro (vendedor_cliente_factura) para evitar duplicados
                         const recordId = `${item.vendedor || 'sin_asesor'}_${item.nit || 'sin_nit'}_${item.factura || 'sin_doc'}`.replace(/[\/.\s]/g, '_');
                         const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'clients', recordId);
                         batch.set(docRef, item);
@@ -716,7 +763,8 @@
                 showToast(`¡Base de datos de Cartera actualizada con éxito! (${tempExcelData.length} registros)`, "success");
                 
                 cancelUpload();
-            } catch (error) {
+            }
+            catch (error) {
                 console.error("Error guardando datos en Firestore:", error);
                 showToast("Ocurrió un error al guardar en Firestore. Inténtalo de nuevo.", "error");
             } finally {
