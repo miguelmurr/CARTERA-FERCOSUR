@@ -1425,21 +1425,21 @@
             document.getElementById('modal-client-invoice').innerText = client.facturas.length === 1 ? client.facturas[0].factura : `${client.facturas.length} Facturas`;
             document.getElementById('modal-client-value').innerText = formatCurrency(client.carteraTotal);
 
-            // Sincronización global con la base de datos completa de cartera para este cliente
+            // Sincronización de facturas de la base de datos
             const facturasCliente = portfolioData.filter(item => item.nit ? item.nit === client.nit : item.cliente === client.cliente);
 
-            // Regla de ordenamiento comercial de Fercosur
+            // Regla de ordenamiento por gravedad de días de mora
             facturasCliente.sort((a, b) => {
                 if (b.diasMora !== a.diasMora) {
                     return b.diasMora - a.diasMora; 
                 }
                 return new Date(a.vence) - new Date(b.vence);
             });
-// Construir la lista aplicando las reglas de alertas con símbolos universales
+
+            // Construcción limpia de listado de documentos omitiendo la palabra "Valor:"
             let listaFacturas = "";
             facturasCliente.forEach(f => {
                 let indicador = "🟢"; 
-                
                 if (f.diasMora > 15) {
                     indicador = "⚠️";
                 } else if (f.diasMora > 10) {
@@ -1447,35 +1447,17 @@
                 } else if (f.diasMora >= 1) {
                     indicador = "🟡";
                 }
-                
-                // Removida la palabra literaria "Valor:" para dejar directo el monto contable
                 listaFacturas += `* ${indicador} Factura: ${f.factura} | ${formatCurrency(f.valor)} | Días de mora: ${f.diasMora}\n`;
             });
 
-            // Analizador heurístico de género y tipo de entidad comercial
-            let encabezadoSaludo = `Estimado(a) ${client.cliente}`;
-            if (client.cliente) {
-                const nombreAnalisis = client.cliente.toUpperCase().trim();
-                const patronesEmpresariales = ['S.A.S', 'S.A.', 'SAS', 'ALMACEN', 'DISTRIBUIDORA', 'FERRETERIA', 'DEPOSITO', 'CONSTRUCTORA', 'MATERIALES', 'GRUPO', 'COOPERATIVA', 'DEPOSITOS'];
-                
-                const esEntidadCorporativa = patronesEmpresariales.some(termino => nombreAnalisis.includes(termino));
-                
-                if (esEntidadCorporativa) {
-                    encabezadoSaludo = `Estimados señores de ${client.cliente}`;
-                } else {
-                    const primerNombre = nombreAnalisis.split(' ')[0];
-                    const nombresFemeninosSinA = ['CARMEN', 'ISABEL', 'BEATRIZ', 'RUTH', 'LUZ', 'DORIS', 'AMPARO', 'MERCEDES', 'INES', 'EDITH', 'RAQUEL'];
-                    
-                    if (primerNombre.endsWith('A') || nombresFemeninosSinA.includes(primerNombre)) {
-                        encabezadoSaludo = `Estimada ${client.cliente}`;
-                    } else {
-                        encabezadoSaludo = `Estimado ${client.cliente}`;
-                    }
-                }
-            }
+            // Formateador dinámico de fecha en texto localizado (ej: "10 de junio de 2026")
+            const opcionesFecha = { year: 'numeric', month: 'long', day: 'numeric' };
+            const fechaCorteTexto = new Date().toLocaleDateString('es-CO', opcionesFecha);
 
-            // Actualizado el saludo con el nombre formal del departamento de cartera de la distribuidora
-            const template = `${encabezadoSaludo}, esperamos que se encuentre muy bien.\n\nDe parte del departamento de cartera de FERCOSUR, nos comunicamos para compartirle de manera muy cordial el estado actual de su cuenta, con el fin de apoyarle en su programación y mantener su cupo activo:\n\n${listaFacturas}\nAgradecemos enormemente su valiosa colaboración y gestión para coordinar la cancelación de estos saldos pendientes. En caso de haya realizado algún pago o tiene alguna duda con los documentos, quedamos muy atentos para recibir el soporte y actualizar nuestro sistema de inmediato.\n\n*Para su comodidad, le recordamos nuestros canales de recaudo autorizados:*\n🔹 *Convenio Bancolombia:* _15020_\n🔹 *Banco BBVA por Convenio SuperGIROS:* _38705_\n\n¡Muchas gracias por su confianza y por seguir haciendo equipo con nosotros!`;
+            const nombreDestinatario = client.cliente ? client.cliente.trim() : 'CLIENTE S.N.';
+
+            // Construcción final estructurada del machote corporativo suavizado
+            const template = `Cordial saludo, *${nombreDestinatario}*. 👋\n\nApreciado cliente, esperamos que se encuentre muy bien. ✨\n\nDesde el departamento de cartera de FERCOSUR, compartimos con usted su estado de cuenta a corte del *${fechaCorteTexto}*. Por favor, verifique que los valores sean correctos y coincidan con sus registros 📝:\n\n${listaFacturas}\nSi nota alguna inconsistencia, por favor comuníquese con nosotros para revisarlo con gusto a los números: 3182919997 o 3228606754. 📞\n\n💳 *Canales de pago autorizados (Convenios):*\n• Bancolombia: Convenio 15020\n• SuperGIROS (BBVA): Convenio 38705\n\n⚠️ *Nota de seguridad:* Si realiza pagos en efectivo al vendedor, exija siempre su recibo original de pago debidamente diligenciado en su presencia. Para su tranquilidad, recuerde que FERCOSUR no se hace responsable por pagos con recibos no autorizados.\n\nQuedamos atentos a sus comentarios.\n\nAtentamente,\n*Yadira Miranda*\nJefe de Cartera - FERCOSUR 🤝`;
             
             document.getElementById('whatsapp-message-template').value = template;
             document.getElementById('whatsapp-modal').classList.remove('hidden');
