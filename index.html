@@ -874,12 +874,18 @@
                     metaCuota = baseline[v.nombre].cuota || 1;
                     const facturasBase = baseline[v.nombre].facturasBase;
                     
-                    Object.keys(facturasBase).forEach(numFactura => {
-                        const valorBase = facturasBase[numFactura];
-                        const facturaActual = portfolioData.find(f => (f.factura || 'S/N') === numFactura);
+                   Object.keys(facturasBase).forEach(llaveUnicaBase => {
+                        const valorBase = facturasBase[llaveUnicaBase];
+                        
+                        // Buscamos la factura usando la misma lógica de llave compuesta súper segura
+                        const facturaActual = portfolioData.find(f => {
+                            const currentNit = String(f.nit || 'SIN_NIT').trim();
+                            const currentFact = String(f.factura || 'S/N').trim();
+                            return `${currentNit}_${currentFact}` === llaveUnicaBase;
+                        });
                         
                         if (!facturaActual) {
-                            recaudoReal += valorBase; // Documento pagado 100%
+                            recaudoReal += valorBase; // Documento pagado 100% (No se encontró en el nuevo Excel)
                         } else {
                             const valorActual = parseFloat(facturaActual.valor) || 0;
                             if (valorBase > valorActual) recaudoReal += (valorBase - valorActual); // Abono parcial
@@ -1388,8 +1394,13 @@
                         }
                     }
 
-                    // Registrar documento para auditoría de recaudo posterior
-                    advisorsBaseline[vendedor].facturasBase[item.factura || 'S/N'] = valor;
+                    // CREAMOS LA LLAVE COMPUESTA IMPARABLE (NIT + NUMERO DE FACTURA)
+                    const cleanNit = String(item.nit || 'SIN_NIT').trim();
+                    const cleanFactura = String(item.factura || 'S/N').trim();
+                    const llaveUnica = `${cleanNit}_${cleanFactura}`;
+                    
+                    // Registrar documento para auditoría de recaudo posterior con llave única limpia
+                    advisorsBaseline[vendedor].facturasBase[llaveUnica] = valor;
 
                     // Ingeniería de Cuota Predictiva: 100% de >30d | 40% de lo Sano
                     if (diasMora >= 30) {
