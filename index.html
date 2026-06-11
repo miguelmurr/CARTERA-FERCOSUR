@@ -1402,11 +1402,12 @@
                     // Registrar documento para auditoría de recaudo posterior con llave única limpia
                     advisorsBaseline[vendedor].facturasBase[llaveUnica] = valor;
 
-                    // Ingeniería de Cuota Predictiva: 100% de >30d | 40% de lo Sano
-                    if (diasMora >= 30) {
-                        advisorsBaseline[vendedor].cuota += valor; 
+                    // Ingeniería de Cuota Predictiva Reparada: 
+                    // 100% de la cartera vencida (Mora de 1-29 días Y mora crítica >30 días) + 40% de lo sano
+                    if (diasMora > 0) {
+                        advisorsBaseline[vendedor].cuota += valor; // Se exige cobrar el 100% de lo vencido
                     } else if (diasMora <= 0) {
-                        advisorsBaseline[vendedor].cuota += (valor * 0.40); 
+                        advisorsBaseline[vendedor].cuota += (valor * 0.40); // 40% preventivo de lo que está al día
                     }
                 });
                 
