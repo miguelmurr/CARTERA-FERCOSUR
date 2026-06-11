@@ -1405,19 +1405,40 @@
             }
         }
 
-        // Sigue la REGLA 1 (Ruta estricta) y sobreescribe los datos vigentes
+        // Sigue la REGLA 1 (Ruta estricta) y sobreescribe los datos vigentes sumando duplicados
         window.savePortfolioToFirebase = async function() {
             if (tempExcelData.length === 0) return;
-
             const btnSave = document.getElementById('btn-save-firebase');
             btnSave.disabled = true;
             btnSave.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Guardando...`;
 
+            // SOLUCIÓN CASO 1: Agrupar y unificar filas duplicadas de la misma factura antes de procesar
+            const mapaUnificado = {};
+            tempExcelData.forEach(item => {
+                const recordId = `${item.vendedor || 'sin_asesor'}_${item.nit || 'sin_nit'}_${item.factura || 'sin_doc'}`.replace(/[\/.\s]/g, '_');
+                
+                if (!mapaUnificado[recordId]) {
+                    // Si no existe el documento, lo creamos haciendo una copia limpia
+                    mapaUnificado[recordId] = { ...item };
+                } else {
+                    // Si la factura ya existe en el mapa, sumamos los saldos para no perder el dinero
+                    mapaUnificado[recordId].valor += item.valor;
+                    
+                    // Si el sistema maneja la columna contable 'sinVencerExcel', también sumamos sus saldos parciales
+                    if (item.sinVencerExcel !== undefined && mapaUnificado[recordId].sinVencerExcel !== undefined) {
+                        mapaUnificado[recordId].sinVencerExcel += item.sinVencerExcel;
+                    }
+                }
+            });
+
+            // Convertimos el mapa unificado de vuelta a una lista limpia para guardar
+            const dataFinalUnificada = Object.values(mapaUnificado);
+
             if (!isFirebaseActive) {
-                // Si no está Firebase configurado, actualizamos la memoria local
-                portfolioData = [...tempExcelData];
+                // Si no está Firebase configurado, actualizamos la memoria de simulación local
+                portfolioData = [...dataFinalUnificada];
                 processAndRenderData();
-                showToast("Datos cargados exitosamente de forma local (Demostración).", "success");
+                showToast("Datos unificados cargados de forma local (Demostración).", "success");
                 cancelUpload();
                 btnSave.disabled = false;
                 btnSave.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> Guardar en Base de Datos`;
@@ -1447,27 +1468,27 @@
                     await deleteBatch.commit();
                 }
 
-                // 2. GUARDADO DE NUEVOS DATOS: Procesamos todo el archivo Excel por bloques de 400
+                // 2. GUARDADO DE NUEVOS DATOS: Procesamos la data final ya unificada por bloques de 400
                 showToast("Guardando la nueva cartera de Fercosur...", "info");
-                for (let i = 0; i < tempExcelData.length; i += 400) {
+                for (let i = 0; i < dataFinalUnificada.length; i += 400) {
                     const batch = writeBatch(db);
-                    const chunk = tempExcelData.slice(i, i + 400);
+                    const chunk = dataFinalUnificada.slice(i, i + 400);
                     
                     chunk.forEach(item => {
                         const recordId = `${item.vendedor || 'sin_asesor'}_${item.nit || 'sin_nit'}_${item.factura || 'sin_doc'}`.replace(/[\/.\s]/g, '_');
                         const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'clients', recordId);
+                        
                         batch.set(docRef, item);
                     });
-                    
                     await batch.commit();
                 }
                 
-                // Ejecutar captura de cuota antes de liberar la variable temporal
-                procesarFotografiaBase(tempExcelData);
+                // Ejecutar captura de cuota usando la data limpia unificada
+                procesarFotografiaBase(dataFinalUnificada);
 
-                portfolioData = tempExcelData;
+                portfolioData = dataFinalUnificada;
                 processAndRenderData();
-                showToast(`¡Base de datos de Cartera actualizada con éxito! (${tempExcelData.length} registros)`, "success");
+                showToast(`¡Base de datos unificada con éxito! El dinero se consolidó correctamente.`, "success");
                 
                 cancelUpload();
             }
