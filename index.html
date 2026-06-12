@@ -564,6 +564,11 @@
             const hoy = new Date();
 
             portfolioData.forEach(item => {
+                // Limpieza global de ceros a la izquierda en el número de factura
+                if (item.factura) {
+                    item.factura = String(item.factura).replace(/^0+(?=\d)/, '');
+                }
+
                 const val = parseFloat(item.valor) || 0;
 
                 // Evaluamos si la factura está vencida según la columna contable del Excel
@@ -1309,10 +1314,10 @@
                     // Guardamos el valor de la columna 'Sin vencer' para saber la mora real de contabilidad
                     let valorSinVencer = row['Sin vencer'] !== undefined ? cleanNumberValue(row['Sin vencer']) : undefined;
                     
-                    return {
+                   return {
                         cliente: row['Nombre tercero'] || "",
                         nit: row['Nit'] || "",
-                        factura: row['Numero'] || "",
+                        factura: row['Numero'] ? String(row['Numero']).replace(/^0+(?=\d)/, '') : "",
                         valor: cleanNumberValue(row['Saldo']),
                         vence: formatDateValue(row['Fecha vencimiento']),
                         celular: celularDetectado,
