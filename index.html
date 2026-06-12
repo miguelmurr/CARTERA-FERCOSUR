@@ -238,13 +238,12 @@
                     </div>
                 </div>
 
-                <div class="flex flex-col lg:flex-row gap-4 justify-between items-center border-t border-slate-100 pt-6">
-                    <div>
-                        <h3 class="text-base font-bold text-slate-800">Filtros y Consultas rápidas</h3>
-                        <p class="text-xs text-slate-400">Busca por cliente o filtra por vendedor en tiempo real</p>
-                    </div>
-                    
-                    <div class="flex flex-col sm:flex-row gap-3 w-full lg:w-auto items-center">
+                <div class="border-t border-slate-100 pt-6 w-full">
+                    <h3 class="text-base font-bold text-slate-800">Filtros y Consultas rápidas</h3>
+                    <p class="text-xs text-slate-400">Busca por cliente o filtra por vendedor en tiempo real</p>
+                </div>
+       
+                <div class="flex flex-col sm:flex-row flex-wrap gap-3 w-full items-center mt-2">
                         <div class="relative w-full sm:w-64">
                             <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
                             <input type="text" id="search-input" oninput="toggleClearButton(); applyFilters()" placeholder="Buscar cliente, NIT o factura..." class="w-full pl-10 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all">
