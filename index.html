@@ -255,13 +255,20 @@
 
                         <!-- Filtro Vendedor -->
                         <div class="relative w-full sm:w-52">
-                             <i class="fa-solid fa-filter absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
-                            <select id="vendedor-select" onchange="applyFilters()" class="w-full pl-10 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none cursor-pointer">
+                            <i class="fa-solid fa-filter absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                            <select id="vendedor-select" onchange="updatePoblacionDropdown(); applyFilters()" class="w-full pl-10 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none cursor-pointer">
                                 <option value="todos">Todos los Vendedores</option>
                             </select>
                             <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-[10px] pointer-events-none"></i>
                         </div>
 
+                        <div id="poblacion-container" class="hidden relative w-full sm:w-52 animate-in fade-in zoom-in-95 duration-200">
+                            <i class="fa-solid fa-location-dot absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                            <select id="poblacion-select" onchange="applyFilters()" class="w-full pl-10 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none cursor-pointer">
+                                <option value="todas">Todas las Ciudades</option>
+                            </select>
+                            <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-[10px] pointer-events-none"></i>
+                        </div>
                         <label class="flex items-center gap-2 cursor-pointer bg-slate-50 border border-slate-200 px-3.5 py-2 rounded-xl text-xs select-none hover:bg-slate-100/80 transition-all w-full sm:w-auto shrink-0 shadow-2xs">
                             <input type="checkbox" id="vencidos-checkbox" onchange="applyFilters()" class="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500/40 cursor-pointer accent-indigo-600">
                             <span class="font-bold text-slate-600 flex items-center gap-1.5">
@@ -1013,9 +1020,38 @@
             }
         }
 
+        window.updatePoblacionDropdown = function() {
+            const selectedVendor = document.getElementById('vendedor-select').value;
+            const poblacionContainer = document.getElementById('poblacion-container');
+            const poblacionSelect = document.getElementById('poblacion-select');
+            
+            if (selectedVendor === 'todos') {
+                poblacionContainer.classList.add('hidden');
+                poblacionSelect.innerHTML = '<option value="todas">Todas las Ciudades</option>';
+            } else {
+                poblacionContainer.classList.remove('hidden');
+                
+                const ciudadesVendedor = new Set();
+                portfolioData.forEach(item => {
+                    if (item.vendedor === selectedVendor && item.ciudad) {
+                        ciudadesVendedor.add(item.ciudad.trim());
+                    }
+                });
+
+                poblacionSelect.innerHTML = '<option value="todas">Todas las Ciudades</option>';
+                Array.from(ciudadesVendedor).sort().forEach(ciudad => {
+                    const opt = document.createElement('option');
+                    opt.value = ciudad;
+                    opt.innerText = ciudad;
+                    poblacionSelect.appendChild(opt);
+                });
+            }
+        };
+
        window.applyFilters = function() {
             const searchQuery = document.getElementById('search-input').value.trim();
             const selectedVendor = document.getElementById('vendedor-select').value;
+            const selectedPoblacion = document.getElementById('poblacion-select') ? document.getElementById('poblacion-select').value : 'todas';
             const filtrarSoloVencidos = document.getElementById('vencidos-checkbox').checked;
 
             const cleanText = (text) => {
@@ -1028,10 +1064,18 @@
 
             const cleanedQuery = cleanText(searchQuery);
             const searchWords = cleanedQuery.split(/\s+/).filter(word => word.length > 0);
-            
             filteredData = portfolioData.filter(item => {
+                // Filtro 1: Vendedor
                 if (selectedVendor !== 'todos' && item.vendedor !== selectedVendor) {
                     return false;
+                }
+
+                // Filtro 2: Población (Aplica solo si el menú es visible y se seleccionó una ciudad)
+                if (selectedVendor !== 'todos' && selectedPoblacion !== 'todas') {
+                    const ciudadItem = item.ciudad ? item.ciudad.trim() : "";
+                    if (ciudadItem !== selectedPoblacion) {
+                        return false;
+                    }
                 }
 
                 if (searchWords.length > 0) {
