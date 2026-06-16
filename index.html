@@ -877,7 +877,14 @@
 
                 mapaRankingVend[nombreAsesor].total += val;
                 if (item.diasMora > 0) mapaRankingVend[nombreAsesor].vencido += val;
-                if (item.diasMora >= 30) mapaRankingVend[nombreAsesor].carteraMas30Dias += val;
+                
+                // Regla especial para Edith Sánchez: penaliza a los 45 días, los demás a los 30 días
+                let diasLimiteViejas = 30;
+                if (nombreAsesorUpper.includes("EDITH SANCHEZ")) {
+                    diasLimiteViejas = 45;
+                }
+                
+                if (item.diasMora >= diasLimiteViejas) mapaRankingVend[nombreAsesor].carteraMas30Dias += val;
 
                 clientesPorVendedor[nombreAsesor].add(clienteKey);
             });
