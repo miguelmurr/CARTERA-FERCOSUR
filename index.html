@@ -851,7 +851,7 @@
                 }
             });
 
-          // 5. COMPILACIÓN MATEMÁTICA DEL ESCALAFÓN DE ASESORES (NUEVO MOTOR CUOTA DINÁMICA CON CANDADO DE COHORTE)
+          // 5. COMPILACIÓN MATEMÁTICA DEL ESCALAFÓN DE ASESORES (MOTOR DE COBROS E INDICADORES EN VIVO)
             const savedBaseline = localStorage.getItem('fercosur_cartera_base');
             const baseline = savedBaseline ? JSON.parse(savedBaseline) : null;
 
@@ -859,105 +859,48 @@
             const clientesPorVendedor = {};
             const clientesAlDiaPorVendedor = {};
 
-            if (baseline) {
-                // SI EXISTE FOTO BASE: El ranking evalúa EXCLUSIVAMENTE las facturas originales de la mañana
-                Object.keys(baseline).forEach(nombreAsesor => {
-                    const nombreAsesorUpper = nombreAsesor.toUpperCase().replace(/\*/g, '').trim();
-                    if (nombreAsesorUpper === "SIN VENDEDOR" || nombreAsesorUpper === "SIN ASESOR" || nombreAsesorUpper === "" || nombreAsesorUpper === "COMERCIALIZADORA DEL SUR FERCOSUR SAS") return;
+            // Los indicadores de estructura (Mora, Flujo Sano) siempre se leen en vivo del archivo cargado
+            portfolioData.forEach(item => {
+                const nombreAsesor = item.vendedor ? item.vendedor.trim() : "Sin Asesor";
+                const nombreAsesorUpper = nombreAsesor.toUpperCase().replace(/\*/g, '').trim();
 
-                    if (!mapaRankingVend[nombreAsesor]) {
-                        mapaRankingVend[nombreAsesor] = { nombre: nombreAsesor, total: 0, vencido: 0, carteraMas30Dias: 0 };
-                        clientesPorVendedor[nombreAsesor] = new Set();
-                        clientesAlDiaPorVendedor[nombreAsesor] = new Set();
-                    }
+                if (nombreAsesorUpper === "SIN VENDEDOR" || nombreAsesorUpper === "SIN ASESOR" || nombreAsesorUpper === "" || nombreAsesorUpper === "COMERCIALIZADORA DEL SUR FERCOSUR SAS") return;
 
-                    const facturasBase = baseline[nombreAsesor].facturasBase || {};
-                    const estadoClientesCohort = {};
+                const val = parseFloat(item.valor) || 0;
+                const clienteKey = item.nit ? item.nit.toString().trim() : (item.cliente ? item.cliente.trim() : "sin_id");
 
-                    Object.keys(facturasBase).forEach(llaveUnicaBase => {
-                        const clienteKey = llaveUnicaBase.split('_')[0] || "sin_id";
-                        clientesPorVendedor[nombreAsesor].add(clienteKey);
+                if (!mapaRankingVend[nombreAsesor]) {
+                    mapaRankingVend[nombreAsesor] = { nombre: nombreAsesor, total: 0, vencido: 0, carteraMas30Dias: 0 };
+                    clientesPorVendedor[nombreAsesor] = new Set();
+                    clientesAlDiaPorVendedor[nombreAsesor] = new Set();
+                }
 
-                        if (!estadoClientesCohort[clienteKey]) {
-                            estadoClientesCohort[clienteKey] = { tieneMora: false };
-                        }
+                mapaRankingVend[nombreAsesor].total += val;
+                if (item.diasMora > 0) mapaRankingVend[nombreAsesor].vencido += val;
+                if (item.diasMora >= 30) mapaRankingVend[nombreAsesor].carteraMas30Dias += val;
 
-                        // Buscamos el saldo actual de la factura congelada en el archivo de la tarde
-                        const facturaActual = portfolioData.find(f => {
-                            const currentNit = String(f.nit || 'SIN_NIT').trim();
-                            const currentFact = String(f.factura || 'S/N').trim();
-                            return `${currentNit}_${currentFact}` === llaveUnicaBase;
-                        });
+                clientesPorVendedor[nombreAsesor].add(clienteKey);
+            });
 
-                        if (facturaActual) {
-                            const valActual = parseFloat(facturaActual.valor) || 0;
-                            mapaRankingVend[nombreAsesor].total += valActual;
-                            
-                            if (facturaActual.diasMora > 0) {
-                                mapaRankingVend[nombreAsesor].vencido += valActual;
-                                estadoClientesCohort[clienteKey].tieneMora = true;
-                            }
-                            if (facturaActual.diasMora >= 30) {
-                                mapaRankingVend[nombreAsesor].carteraMas30Dias += valActual;
-                            }
-                        } else {
-                            // Si ya no aparece, su saldo actual es $0 (Factura pagada con éxito)
-                            mapaRankingVend[nombreAsesor].total += 0;
-                        }
-                    });
+            // Identificar qué clientes están totalmente sanos en el archivo en vivo
+            const estadoGlobalClientes = {};
+            portfolioData.forEach(item => {
+                const clienteKey = item.nit ? item.nit.toString().trim() : (item.cliente ? item.cliente.trim() : "sin_id");
+                if (!estadoGlobalClientes[clienteKey]) estadoGlobalClientes[clienteKey] = { tieneMora: false };
+                if (item.diasMora > 0) estadoGlobalClientes[clienteKey].tieneMora = true;
+            });
 
-                    // Calculamos ferreterías de la cohorte que quedaron 100% al día
-                    Object.keys(estadoClientesCohort).forEach(cliKey => {
-                        if (!estadoClientesCohort[cliKey].tieneMora) {
-                            clientesAlDiaPorVendedor[nombreAsesor].add(cliKey);
-                        }
-                    });
-                });
-            } else {
-                // FALLBACK RESTRINGIDO: Si no hay foto base, evalúa la foto actual estática (comportamiento por defecto)
-                portfolioData.forEach(item => {
-                    const nombreAsesor = item.vendedor ? item.vendedor.trim() : "Sin Asesor";
-                    const nombreAsesorUpper = nombreAsesor.toUpperCase().replace(/\*/g, '').trim();
+            portfolioData.forEach(item => {
+                const nombreAsesor = item.vendedor ? item.vendedor.trim() : "Sin Asesor";
+                const clienteKey = item.nit ? item.nit.toString().trim() : (item.cliente ? item.cliente.trim() : "sin_id");
+                if (clientesPorVendedor[nombreAsesor] && !estadoGlobalClientes[clienteKey].tieneMora) {
+                    clientesAlDiaPorVendedor[nombreAsesor].add(clienteKey);
+                }
+            });
 
-                    if (nombreAsesorUpper === "SIN VENDEDOR" || nombreAsesorUpper === "SIN ASESOR" || nombreAsesorUpper === "" || nombreAsesorUpper === "COMERCIALIZADORA DEL SUR FERCOSUR SAS") return;
-
-                    const val = parseFloat(item.valor) || 0;
-                    const clienteKey = item.nit ? item.nit.toString().trim() : (item.cliente ? item.cliente.trim() : "sin_id");
-
-                    if (!mapaRankingVend[nombreAsesor]) {
-                        mapaRankingVend[nombreAsesor] = { nombre: nombreAsesor, total: 0, vencido: 0, carteraMas30Dias: 0 };
-                        clientesPorVendedor[nombreAsesor] = new Set();
-                        clientesAlDiaPorVendedor[nombreAsesor] = new Set();
-                    }
-
-                    mapaRankingVend[nombreAsesor].total += val;
-                    if (item.diasMora > 0) mapaRankingVend[nombreAsesor].vencido += val;
-                    if (item.diasMora >= 30) mapaRankingVend[nombreAsesor].carteraMas30Dias += val;
-
-                    clientesPorVendedor[nombreAsesor].add(clienteKey);
-                });
-
-                const estadoGlobalClientes = {};
-                portfolioData.forEach(item => {
-                    const clienteKey = item.nit ? item.nit.toString().trim() : (item.cliente ? item.cliente.trim() : "sin_id");
-                    if (!estadoGlobalClientes[clienteKey]) estadoGlobalClientes[clienteKey] = { tieneMora: false };
-                    if (item.diasMora > 0) estadoGlobalClientes[clienteKey].tieneMora = true;
-                });
-
-                portfolioData.forEach(item => {
-                    const nombreAsesor = item.vendedor ? item.vendedor.trim() : "Sin Asesor";
-                    const clienteKey = item.nit ? item.nit.toString().trim() : (item.cliente ? item.cliente.trim() : "sin_id");
-                    if (clientesPorVendedor[nombreAsesor] && !estadoGlobalClientes[clienteKey].tieneMora) {
-                        clientesAlDiaPorVendedor[nombreAsesor].add(clienteKey);
-                    }
-                });
-            }
-
-            // Procesamos la lista final cruzando los datos puros de la cohorte
-            const listaRankeada = Object.keys(mapaRankingVend).map(nombreAsesor => {
-                const v = mapaRankingVend[nombreAsesor];
-                
-                // 1. CUMPLIMIENTO DE CUOTA DINÁMICA (40 Puntos)
+            // Compilar la lista rankeada mezclando los indicadores en vivo con el progreso de recaudo desde cero
+            const listaRankeada = Object.values(mapaRankingVend).map(v => {
+                // Cumplimiento de cuota dinámica basada en la Foto Base
                 let recaudoReal = 0;
                 let metaCuota = 1; 
                 
@@ -987,20 +930,18 @@
                 if (ptjeCuota > 40) ptjeCuota = 40; 
                 if (!baseline) ptjeCuota = 0; 
 
-                // 2. CONTROL DE MORA (25 Puntos)
-                const totalMonto = v.total || 0;
-                const totalVencidoAsesor = v.vencido || 0;
-                const morosidadPct = totalMonto > 0 ? (totalVencidoAsesor / totalMonto) : 0;
+                // Control de mora en vivo del archivo actual
+                const totalMonto = v.total || 1;
+                const morosidadPct = (v.vencido / totalMonto);
                 let ptjeMora = (1 - morosidadPct) * 25;
                 if (ptjeMora < 0) ptjeMora = 0;
-                if (totalMonto === 0 && baseline && baseline[v.nombre]) ptjeMora = 25; // Si ya cobró todo lo viejo, tiene puntuación perfecta
 
-                // 3. FACTURAS VIEJAS (20 Puntos)
+                // Facturas viejas en vivo del archivo actual
                 let porcentajeViejas = 0;
-                if (totalVencidoAsesor > 0) porcentajeViejas = (v.carteraMas30Dias / totalVencidoAsesor);
+                if (v.vencido > 0) porcentajeViejas = (v.carteraMas30Dias / v.vencido);
                 let ptjeViejas = (1 - porcentajeViejas) * 20;
 
-                // 4. CLIENTES SANOS (15 Puntos)
+                // Clientes sanos en vivo del archivo actual
                 const totalClientesZona = clientesPorVendedor[v.nombre].size || 1;
                 const clientesSanosZona = clientesAlDiaPorVendedor[v.nombre].size;
                 let ptjeSanos = (clientesSanosZona / totalClientesZona) * 15;
@@ -1009,7 +950,7 @@
 
                 return {
                     nombre: v.nombre,
-                    sana: totalMonto - totalVencidoAsesor,
+                    sana: v.total - v.vencido,
                     morosidad: morosidadPct * 100,
                     recaudoReal: recaudoReal,
                     meta: metaCuota === 1 ? 0 : metaCuota,
@@ -1490,6 +1431,7 @@
         };
 
         // Procesador Analítico de Fotografía Base y Cuotas Dinámicas
+        // Procesador Analítico de Fotografía Base y Cuotas Dinámicas con Historial de Tendencia
         function procesarFotografiaBase(dataExcel) {
             const isBaseline = document.getElementById('is-baseline-checkbox').checked;
             
@@ -1502,11 +1444,14 @@
                     if (!advisorsBaseline[vendedor]) {
                         advisorsBaseline[vendedor] = {
                             cuota: 0,
+                            totalMontoBase: 0,
+                            vencidoBase: 0,
                             facturasBase: {}
                         };
                     }
                     
                     const valor = parseFloat(item.valor) || 0;
+                    advisorsBaseline[vendedor].totalMontoBase += valor;
                     
                     // REPARACIÓN DE MORA TEMPORAL EN FOTOGRAFÍA BASE
                     let diasMora = 0;
@@ -1528,7 +1473,7 @@
 
                                 const mesesMap = {
                                     jan: 0, ene: 0, feb: 1, mar: 2, apr: 3, abr: 3, may: 4, jun: 5,
-                                    jul: 6, aug: 7, ago: 7, sep: 8, oct: 9, nov: 10, dec: 11, dic: 11
+                                    jul: 6, ago: 7, ago: 7, sep: 8, oct: 9, nov: 10, dec: 11, dic: 11
                                 };
                                 let mesIndex = mesesMap[mesTexto];
                                 if (mesIndex !== undefined && !isNaN(dia) && !isNaN(anio)) {
@@ -1549,21 +1494,32 @@
                         diasMora = estaVencidaContable ? 1 : 0;
                     }
 
+                    if (diasMora > 0) {
+                        advisorsBaseline[vendedor].vencidoBase += valor;
+                    }
+
                     // CREAMOS LA LLAVE COMPUESTA IMPARABLE (NIT + NUMERO DE FACTURA)
                     const cleanNit = String(item.nit || 'SIN_NIT').trim();
                     const cleanFactura = String(item.factura || 'S/N').trim();
                     const llaveUnica = `${cleanNit}_${cleanFactura}`;
                     
-                    // Registrar documento para auditoría de recaudo posterior con llave única limpia
                     advisorsBaseline[vendedor].facturasBase[llaveUnica] = valor;
 
                     // Ingeniería de Cuota Predictiva Reparada: 
-                    // 100% de la cartera vencida (Mora de 1-29 días Y mora crítica >30 días) + 40% de lo sano
                     if (diasMora > 0) {
-                        advisorsBaseline[vendedor].cuota += valor; // Se exige cobrar el 100% de lo vencido
+                        advisorsBaseline[vendedor].cuota += valor; 
                     } else if (diasMora <= 0) {
-                        advisorsBaseline[vendedor].cuota += (valor * 0.40); // 40% preventivo de lo que está al día
+                        advisorsBaseline[vendedor].cuota += (valor * 0.40); 
                     }
+                });
+
+                // Calcular y guardar porcentajes iniciales fijos de origen para las tendencias posteriores
+                Object.keys(advisorsBaseline).forEach(vendor => {
+                    const baseData = advisorsBaseline[vendor];
+                    const total = baseData.totalMontoBase || 1;
+                    const vencido = baseData.vencidoBase || 0;
+                    baseData.morosidadPctOriginal = (vencido / total) * 100;
+                    baseData.flujoSanoPctOriginal = ((total - vencido) / total) * 100;
                 });
                 
                 localStorage.setItem('fercosur_cartera_base', JSON.stringify(advisorsBaseline));
