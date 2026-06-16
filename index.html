@@ -34,28 +34,80 @@
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
 
-    <div id="password-screen" class="fixed inset-0 z-50 bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 flex items-center justify-center p-4 backdrop-blur-md">
-        <div class="bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-md w-full p-8 flex flex-col items-center gap-6 animate-in fade-in zoom-in-95 duration-300">
-            <div class="h-16 w-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shadow-xs">
-                <i class="fa-solid fa-lock text-2xl"></i>
+   <div id="password-screen" class="fixed inset-0 z-50 bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 flex items-center justify-center p-4 backdrop-blur-md">
+        
+        <div id="vendor-login-box" class="bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-md w-full p-8 flex flex-col items-center gap-6 animate-in fade-in zoom-in-95 duration-300">
+            <div class="h-16 w-16 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center shadow-inner">
+                <i class="fa-solid fa-users text-2xl"></i>
             </div>
             <div class="text-center flex flex-col gap-1">
-                <h2 class="text-xl font-extrabold text-slate-900 tracking-tight">Acceso Restringido</h2>
-                <p class="text-xs text-slate-400 font-medium">Esta plataforma tiene acceso unicamente a personal autorizado. Ingrese su clave de autorización comercial.</p>
+                <h2 class="text-xl font-black text-slate-900 tracking-tight">¡Bienvenido a Fercosur!</h2>
+                <p class="text-xs text-slate-400 font-medium">Seleccione su zona comercial e ingrese su contraseña.</p>
+            </div>
+            
+            <div class="w-full flex flex-col gap-4">
+                <div class="relative w-full">
+                    <i class="fa-solid fa-user-tie absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                    <select id="login-vendor-select" class="w-full pl-10 pr-8 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-slate-700 font-bold cursor-pointer appearance-none">
+                        <option value="" disabled selected>Seleccione su nombre de la lista...</option>
+                        <option value="FS CAUCA FABIAN JIMENEZ">FS CAUCA FABIAN JIMENEZ</option>
+                        <option value="FS IPIALES KATHERINE">FS IPIALES KATHERINE</option>
+                        <option value="FS NORTE 2 DIEGO MARTINEZ">FS NORTE 2 DIEGO MARTINEZ</option>
+                        <option value="FS NORTE EIMER">FS NORTE EIMER</option>
+                        <option value="FS OCCIDENTE LILIANA">FS OCCIDENTE LILIANA</option>
+                        <option value="FS PASTO 1 GLORIA VIVEROS">FS PASTO 1 GLORIA VIVEROS</option>
+                        <option value="FS PASTO 2 ROLAND LOPEZ">FS PASTO 2 ROLAND LOPEZ</option>
+                        <option value="FS PUTUMAYO 1 LUIS MIGUEL">FS PUTUMAYO 1 LUIS MIGUEL</option>
+                        <option value="FS PUTUMAYO 2 EDITH SANCHEZ">FS PUTUMAYO 2 EDITH SANCHEZ</option>
+                        <option value="FS PUTUMAYO 3 EDINSON">FS PUTUMAYO 3 EDINSON</option>
+                        <option value="FS SUR HAROLD MARTINEZ">FS SUR HAROLD MARTINEZ</option>
+                        <option value="FS VIA TUMACO CRISTINA BENAVIDES">FS VIA TUMACO CRISTINA BENAVIDES</option>
+                    </select>
+                    <i class="fa-solid fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-[10px] pointer-events-none"></i>
+                </div>
+
+                <div class="relative w-full">
+                    <i class="fa-solid fa-key absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                    <input type="password" id="vendor-password-input" maxlength="4" onkeydown="if(event.key === 'Enter') verifyVendorPassword()" placeholder="Contraseña de 4 dígitos..." class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all tracking-widest font-bold text-slate-700">
+                </div>
+                
+                <div id="vendor-password-error" class="hidden text-rose-600 font-semibold text-[11px] flex items-center gap-1 pl-1">
+                    <i class="fa-solid fa-circle-exclamation"></i> Usuario o contraseña inválida.
+                </div>
+            </div>
+            
+            <button onclick="verifyVendorPassword()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md transition-all flex items-center justify-center gap-2">
+                <i class="fa-solid fa-right-to-bracket"></i> Ingresar como Asesor
+            </button>
+        </div>
+
+        <div id="admin-login-box" class="hidden bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-md w-full p-8 flex flex-col items-center gap-6 animate-in fade-in zoom-in-95 duration-300">
+            <div class="h-16 w-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shadow-inner">
+                <i class="fa-solid fa-user-shield text-2xl"></i>
+            </div>
+            <div class="text-center flex flex-col gap-1">
+                <h2 class="text-xl font-black text-slate-900 tracking-tight">Acceso de Administración</h2>
+                <p class="text-xs text-slate-400 font-medium">Ingrese la clave de seguridad comercial.</p>
             </div>
             <div class="w-full flex flex-col gap-3">
                 <div class="relative w-full">
                     <i class="fa-solid fa-key absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-                    <input type="password" id="global-password-input" onkeydown="if(event.key === 'Enter') verifyGlobalPassword()" placeholder="Escriba la clave de acceso aquí..." class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all tracking-wide text-slate-700">
+                    <input type="password" id="global-password-input" onkeydown="if(event.key === 'Enter') verifyGlobalPassword()" placeholder="Escriba la clave maestra aquí..." class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all tracking-wide text-slate-700">
                 </div>
                 <div id="password-error-msg" class="hidden text-rose-600 font-semibold text-[11px] flex items-center gap-1 pl-1">
-                    <i class="fa-solid fa-circle-exclamation"></i> Clave incorrecta. Inténtelo de nuevo.
+                    <i class="fa-solid fa-circle-exclamation"></i> Clave incorrecta.
                 </div>
             </div>
-            <button onclick="verifyGlobalPassword()" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md transition-all flex items-center justify-center gap-2">
-                <i class="fa-solid fa-shield-checkmark"></i> Verificar Identidad
-            </button>
+            <div class="flex gap-3 w-full">
+                <button onclick="closeAdminModal()" class="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold transition-all">
+                    Volver
+                </button>
+                <button onclick="verifyGlobalPassword()" class="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md transition-all flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-shield-checkmark"></i> Verificar
+                </button>
+            </div>
         </div>
+
     </div>
 
     <header class="bg-gradient-to-r from-blue-800 to-indigo-900 text-white shadow-md sticky top-0 z-40">
@@ -71,12 +123,18 @@
             </div>
             
             <!-- Estado de conexión Firebase -->
-            <div class="flex items-center gap-3 bg-blue-950/40 px-3 py-1.5 rounded-full border border-blue-700/50 text-xs">
-                <span class="relative flex h-2.5 w-2.5">
-                    <span id="db-pulse" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                    <span id="db-dot" class="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
-                </span>
-                <span id="db-status-text" class="font-medium text-slate-300">Conectando a base de datos...</span>
+            <div class="flex flex-wrap items-center gap-3">
+                <button onclick="openAdminModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-full text-xs font-bold shadow-md transition-all flex items-center gap-1.5">
+                    <i class="fa-solid fa-user-shield"></i> Acceso Admin
+                </button>
+                
+                <div class="flex items-center gap-3 bg-blue-950/40 px-3 py-1.5 rounded-full border border-blue-700/50 text-xs">
+                    <span class="relative flex h-2.5 w-2.5">
+                        <span id="db-pulse" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                        <span id="db-dot" class="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+                    </span>
+                    <span id="db-status-text" class="font-medium text-slate-300">Conectando a base de datos...</span>
+                </div>
             </div>
         </div>
     </header>
@@ -638,6 +696,27 @@
                 opt.innerText = vendor;
                 selectVendors.appendChild(opt);
             });
+
+            // NUEVO: Control de privacidad y bloqueo de filtros según el usuario activo
+            const rankingBtn = document.querySelector("button[onclick='toggleRankingPanel()']");
+            if (currentUserRole === 'vendedor') {
+                // Forzar a que el buscador se fije en su propio nombre y bloquear el menú para que no pueda alterarlo
+                selectVendors.value = currentUserVendor;
+                selectVendors.disabled = true;
+                
+                // Forzar la actualización del menú de ciudades basado en su zona asignada
+                if (typeof updatePoblacionDropdown === 'function') {
+                    updatePoblacionDropdown();
+                }
+                
+                // Ocultar por completo el botón del Trofeo (Ranking Global)
+                if (rankingBtn) rankingBtn.classList.add('hidden');
+            } else {
+                // Si eres administrador, dejar el menú libre y mostrar el ranking completo con normalidad
+                selectVendors.disabled = false;
+                if (rankingBtn) rankingBtn.classList.remove('hidden');
+            }
+
             applyFilters();
         }
 
@@ -1797,33 +1876,94 @@
             }, 4000);
         }
 
-        // Función de autenticación de seguridad de la plataforma
+        // NUEVO: Variables de control de roles y usuarios
+        let currentUserRole = 'vendedor'; 
+        let currentUserVendor = ''; 
+
+        // Base de datos interna de credenciales de asesores
+        const vendorCredentials = {
+            "FS CAUCA FABIAN JIMENEZ": "1001",
+            "FS IPIALES KATHERINE": "1002",
+            "FS NORTE 2 DIEGO MARTINEZ": "1003",
+            "FS NORTE EIMER": "1004",
+            "FS OCCIDENTE LILIANA": "1005",
+            "FS PASTO 1 GLORIA VIVEROS": "1006",
+            "FS PASTO 2 ROLAND LOPEZ": "1007",
+            "FS PUTUMAYO 1 LUIS MIGUEL": "1008",
+            "FS PUTUMAYO 2 EDITH SANCHEZ": "1009",
+            "FS PUTUMAYO 3 EDINSON": "1010",
+            "FS SUR HAROLD MARTINEZ": "1011",
+            "FS VIA TUMACO CRISTINA BENAVIDES": "1012"
+        };
+
+        // Funciones de control visual para las ventanas de login
+        window.openAdminModal = function() {
+            document.getElementById('vendor-login-box').classList.add('hidden');
+            document.getElementById('admin-login-box').classList.remove('hidden');
+            setTimeout(() => { document.getElementById('global-password-input').focus(); }, 50);
+        };
+
+        window.closeAdminModal = function() {
+            document.getElementById('admin-login-box').classList.add('hidden');
+            document.getElementById('vendor-login-box').classList.remove('hidden');
+        };
+
+        // Verificación de clave para Administrador
         window.verifyGlobalPassword = function() {
             const input = document.getElementById('global-password-input');
             const errorMsg = document.getElementById('password-error-msg');
             const secretKey = "0920*";
 
             if (input.value === secretKey) {
+                currentUserRole = 'admin';
+                currentUserVendor = '';
+                if (errorMsg) errorMsg.classList.add('hidden');
                 document.getElementById('password-screen').classList.add('hidden');
-                // Desbloquear e inicializar el enlace con los servicios de la base de datos
                 initApp();
             } else {
-                errorMsg.classList.remove('hidden');
+                if (errorMsg) errorMsg.classList.remove('hidden');
                 input.classList.add('border-rose-400', 'focus:ring-rose-500/20', 'focus:border-rose-500');
                 input.value = "";
                 input.focus();
-                
-                if (typeof showToast === 'function') {
-                    showToast("Acceso denegado: Clave incorrecta.", "error");
-                }
+                showToast("Acceso denegado: Clave incorrecta.", "error");
             }
         };
 
-        // Interceptores del arranque nativo
+        // Verificación de clave para Vendedores
+        window.verifyVendorPassword = function() {
+            const vendorSelect = document.getElementById('login-vendor-select');
+            const passwordInput = document.getElementById('vendor-password-input');
+            const errorMsg = document.getElementById('vendor-password-error');
+            
+            const selectedVendor = vendorSelect.value;
+            const enteredPassword = passwordInput.value;
+
+            if (!selectedVendor) {
+                showToast("Por favor, seleccione su nombre de la lista primero.", "error");
+                return;
+            }
+
+            if (vendorCredentials[selectedVendor] === enteredPassword) {
+                if (errorMsg) errorMsg.classList.add('hidden');
+                currentUserRole = 'vendedor';
+                currentUserVendor = selectedVendor;
+                
+                document.getElementById('password-screen').classList.add('hidden');
+                initApp();
+            } else {
+                if (errorMsg) errorMsg.classList.remove('hidden');
+                passwordInput.classList.add('border-rose-400', 'focus:ring-rose-500/20', 'focus:border-rose-500');
+                passwordInput.value = "";
+                passwordInput.focus();
+                showToast("Contraseña incorrecta. Inténtelo de nuevo.", "error");
+            }
+        };
+
+        // Interceptores del arranque nativo ajustados al sistema multiusuario
         window.onload = function() {
-            const input = document.getElementById('global-password-input');
-            if (input) {
-                input.focus();
+            const vendorSelect = document.getElementById('login-vendor-select');
+            if (vendorSelect) {
+                vendorSelect.focus();
             }
         };
 
