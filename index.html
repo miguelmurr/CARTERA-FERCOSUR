@@ -851,7 +851,7 @@
                 }
             });
 
-          // 5. COMPILACIÓN MATEMÁTICA DEL ESCALAFÓN DE ASESORES (MOTOR DE COBROS E INDICADORES EN VIVO)
+          // 5. COMPILACIÓN MATEMÁTICA DEL ESCALAFÓN DE ASESORES (MOTOR DE COBROS E INDICADORES EN VIVO CON TENDENCIAS)
             const savedBaseline = localStorage.getItem('fercosur_cartera_base');
             const baseline = savedBaseline ? JSON.parse(savedBaseline) : null;
 
@@ -859,7 +859,6 @@
             const clientesPorVendedor = {};
             const clientesAlDiaPorVendedor = {};
 
-            // Los indicadores de estructura (Mora, Flujo Sano) siempre se leen en vivo del archivo cargado
             portfolioData.forEach(item => {
                 const nombreAsesor = item.vendedor ? item.vendedor.trim() : "Sin Asesor";
                 const nombreAsesorUpper = nombreAsesor.toUpperCase().replace(/\*/g, '').trim();
@@ -882,7 +881,6 @@
                 clientesPorVendedor[nombreAsesor].add(clienteKey);
             });
 
-            // Identificar qué clientes están totalmente sanos en el archivo en vivo
             const estadoGlobalClientes = {};
             portfolioData.forEach(item => {
                 const clienteKey = item.nit ? item.nit.toString().trim() : (item.cliente ? item.cliente.trim() : "sin_id");
@@ -898,9 +896,7 @@
                 }
             });
 
-            // Compilar la lista rankeada mezclando los indicadores en vivo con el progreso de recaudo desde cero
             const listaRankeada = Object.values(mapaRankingVend).map(v => {
-                // Cumplimiento de cuota dinámica basada en la Foto Base
                 let recaudoReal = 0;
                 let metaCuota = 1; 
                 
@@ -930,38 +926,66 @@
                 if (ptjeCuota > 40) ptjeCuota = 40; 
                 if (!baseline) ptjeCuota = 0; 
 
-                // Control de mora en vivo del archivo actual
                 const totalMonto = v.total || 1;
-                const morosidadPct = (v.vencido / totalMonto);
-                let ptjeMora = (1 - morosidadPct) * 25;
+                const morosidadPctCurrent = (v.vencido / totalMonto) * 100;
+                const flujoSanoPctCurrent = ((v.total - v.vencido) / totalMonto) * 100;
+
+                let ptjeMora = (1 - (morosidadPctCurrent / 100)) * 25;
                 if (ptjeMora < 0) ptjeMora = 0;
 
-                // Facturas viejas en vivo del archivo actual
                 let porcentajeViejas = 0;
                 if (v.vencido > 0) porcentajeViejas = (v.carteraMas30Dias / v.vencido);
                 let ptjeViejas = (1 - porcentajeViejas) * 20;
 
-                // Clientes sanos en vivo del archivo actual
                 const totalClientesZona = clientesPorVendedor[v.nombre].size || 1;
                 const clientesSanosZona = clientesAlDiaPorVendedor[v.nombre].size;
                 let ptjeSanos = (clientesSanosZona / totalClientesZona) * 15;
 
                 const puntajeFinal = ptjeCuota + ptjeMora + ptjeViejas + ptjeSanos;
 
+                // CÁLCULO DE TENDENCIAS EN BASE A LA FOTO BASE CONGELADA
+                let htmlTendenciaMora = "";
+                let htmlTendenciaSano = "";
+
+                if (baseline && baseline[v.nombre]) {
+                    const originalMora = baseline[v.nombre].morosidadPctOriginal !== undefined ? baseline[v.nombre].morosidadPctOriginal : 0;
+                    const originalSano = baseline[v.nombre].flujoSanoPctOriginal !== undefined ? baseline[v.nombre].flujoSanoPctOriginal : 100;
+
+                    const diffMora = morosidadPctCurrent - originalMora;
+                    const diffSano = flujoSanoPctCurrent - originalSano;
+
+                    // Tendencia Mora: Bajar es bueno (Verde), Subir es malo (Rojo)
+                    if (diffMora > 0.005) {
+                        htmlTendenciaMora = `<span class="text-rose-600 font-extrabold text-[10px] ml-1.5" title="Mora subió">▲ ${diffMora.toFixed(2)}%</span>`;
+                    } else if (diffMora < -0.005) {
+                        htmlTendenciaMora = `<span class="text-emerald-600 font-extrabold text-[10px] ml-1.5" title="Mora bajó">▼ ${Math.abs(diffMora).toFixed(2)}%</span>`;
+                    }
+
+                    // Tendencia Sano: Subir es bueno (Verde), Bajar es malo (Rojo)
+                    if (diffSano > 0.005) {
+                        htmlTendenciaSano = `<span class="text-emerald-600 font-extrabold text-[10px] ml-1.5" title="Salud subió">▲ ${diffSano.toFixed(2)}%</span>`;
+                    } else if (diffSano < -0.005) {
+                        htmlTendenciaSano = `<span class="text-rose-600 font-extrabold text-[10px] ml-1.5" title="Salud bajó">▼ ${Math.abs(diffSano).toFixed(2)}%</span>`;
+                    }
+                }
+
                 return {
                     nombre: v.nombre,
-                    sana: v.total - v.vencido,
-                    morosidad: morosidadPct * 100,
+                    sanaCOP: v.total - v.vencido,
+                    morosidad: morosidadPctCurrent,
+                    flujoSanoPct: flujoSanoPctCurrent,
                     recaudoReal: recaudoReal,
                     meta: metaCuota === 1 ? 0 : metaCuota,
-                    puntaje: Math.round(puntajeFinal)
+                    puntaje: Math.round(puntajeFinal),
+                    moraTrendHTML: htmlTendenciaMora,
+                    sanoTrendHTML: htmlTendenciaSano
                 };
             });
 
             // Ordenamiento estricto
             listaRankeada.sort((a, b) => b.puntaje - a.puntaje);
 
-            // Inyección en HTML
+            // Inyección en HTML con popups interactivos
             const rankingBody = document.getElementById('ranking-vendedores-body');
             if (rankingBody) {
                 rankingBody.innerHTML = '';
@@ -1001,11 +1025,25 @@
                                 <span class="text-[9px] block text-slate-400 leading-none mb-0.5">Meta: ${formatCurrency(vendedor.meta)}</span>
                                 <span class="text-emerald-600 font-bold text-xs">${formatCurrency(vendedor.recaudoReal)}</span>
                             </td>
-                            <td class="py-2.5 px-4 text-center font-semibold text-slate-600">
-                                ${vendedor.morosidad.toFixed(1)}%
+                            <td class="py-2.5 px-4 text-center font-semibold text-slate-600 whitespace-nowrap">
+                                <span>${vendedor.morosidad.toFixed(1)}%</span>
+                                ${vendedor.moraTrendHTML}
                             </td>
-                            <td class="py-2.5 px-4 text-right font-bold text-slate-700">
-                                ${formatCurrency(vendedor.sana)}
+                            <td class="py-2.5 px-4 text-right relative font-bold text-slate-700 whitespace-nowrap">
+                                <div class="inline-flex items-center justify-end gap-1">
+                                    <span onclick="event.stopPropagation(); const el = document.getElementById('popup-sana-${index}'); document.querySelectorAll('.popup-sana-clase').forEach(p => p !== el && p.classList.add('hidden')); el.classList.toggle('hidden');" 
+                                          class="cursor-pointer underline decoration-dotted decoration-indigo-400 hover:text-indigo-600 transition-colors" 
+                                          title="Clic para ver saldo real en COP">
+                                        ${vendedor.flujoSanoPct.toFixed(2)}%
+                                    </span>
+                                    ${vendedor.sanoTrendHTML}
+                                </div>
+                                
+                                <!-- Cuadro Flotante Independiente Cerrable -->
+                                <div id="popup-sana-${index}" class="popup-sana-clase hidden absolute right-2 top-8 z-50 bg-slate-900 text-white font-medium text-[11px] px-3 py-2 rounded-xl shadow-xl flex items-center gap-2 border border-slate-700">
+                                    <span>Saldo COP: <strong class="text-emerald-400">${formatCurrency(vendedor.sanaCOP)}</strong></span>
+                                    <button onclick="event.stopPropagation(); document.getElementById('popup-sana-${index}').classList.add('hidden')" class="text-slate-400 hover:text-white ml-2 font-bold text-xs">×</button>
+                                </div>
                             </td>
                             <td class="py-2.5 px-4 text-center">
                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${semaforoPuntaje}">
@@ -1014,6 +1052,11 @@
                             </td>
                         `;
                         rankingBody.appendChild(tr);
+                    });
+                    
+                    // Cierra los popups si haces clic afuera en cualquier zona muerta
+                    document.addEventListener('click', () => {
+                        document.querySelectorAll('.popup-sana-clase').forEach(p => p.classList.add('hidden'));
                     });
                 }
             }
@@ -1430,8 +1473,7 @@
             showToast("Proceso de carga cancelado.", "info");
         };
 
-        // Procesador Analítico de Fotografía Base y Cuotas Dinámicas
-        // Procesador Analítico de Fotografía Base y Cuotas Dinámicas con Historial de Tendencia
+        // Procesador Analítico de Fotografía Base y Cuotas Dinámicas con Historial de Tendencias
         function procesarFotografiaBase(dataExcel) {
             const isBaseline = document.getElementById('is-baseline-checkbox').checked;
             
@@ -1453,7 +1495,6 @@
                     const valor = parseFloat(item.valor) || 0;
                     advisorsBaseline[vendedor].totalMontoBase += valor;
                     
-                    // REPARACIÓN DE MORA TEMPORAL EN FOTOGRAFÍA BASE
                     let diasMora = 0;
                     let estaVencidaContable = item.sinVencerExcel !== undefined ? (item.sinVencerExcel === 0 && valor > 0) : false;
 
@@ -1498,14 +1539,12 @@
                         advisorsBaseline[vendedor].vencidoBase += valor;
                     }
 
-                    // CREAMOS LA LLAVE COMPUESTA IMPARABLE (NIT + NUMERO DE FACTURA)
                     const cleanNit = String(item.nit || 'SIN_NIT').trim();
                     const cleanFactura = String(item.factura || 'S/N').trim();
                     const llaveUnica = `${cleanNit}_${cleanFactura}`;
                     
                     advisorsBaseline[vendedor].facturasBase[llaveUnica] = valor;
 
-                    // Ingeniería de Cuota Predictiva Reparada: 
                     if (diasMora > 0) {
                         advisorsBaseline[vendedor].cuota += valor; 
                     } else if (diasMora <= 0) {
@@ -1513,7 +1552,7 @@
                     }
                 });
 
-                // Calcular y guardar porcentajes iniciales fijos de origen para las tendencias posteriores
+                // Calcular y guardar porcentajes iniciales de origen para las tendencias
                 Object.keys(advisorsBaseline).forEach(vendor => {
                     const baseData = advisorsBaseline[vendor];
                     const total = baseData.totalMontoBase || 1;
@@ -1527,7 +1566,6 @@
                 showToast("📸 Fotografía base y cuotas dinámicas guardadas exitosamente.", "success");
             }
         }
-
         // Sigue la REGLA 1 (Ruta estricta) y sobreescribe los datos vigentes sumando duplicados
         window.savePortfolioToFirebase = async function() {
             if (tempExcelData.length === 0) return;
