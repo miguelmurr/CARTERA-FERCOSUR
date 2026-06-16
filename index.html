@@ -851,54 +851,112 @@
                 }
             });
 
-           // 5. COMPILACIÓN MATEMÁTICA DEL ESCALAFÓN DE ASESORES (NUEVO MOTOR CUOTA DINÁMICA)
+          // 5. COMPILACIÓN MATEMÁTICA DEL ESCALAFÓN DE ASESORES (NUEVO MOTOR CUOTA DINÁMICA CON CANDADO DE COHORTE)
+            const savedBaseline = localStorage.getItem('fercosur_cartera_base');
+            const baseline = savedBaseline ? JSON.parse(savedBaseline) : null;
+
             const mapaRankingVend = {};
             const clientesPorVendedor = {};
             const clientesAlDiaPorVendedor = {};
 
-            portfolioData.forEach(item => {
-                const nombreAsesor = item.vendedor ? item.vendedor.trim() : "Sin Asesor";
-                const nombreAsesorUpper = nombreAsesor.toUpperCase().replace(/\*/g, '').trim();
+            if (baseline) {
+                // SI EXISTE FOTO BASE: El ranking evalúa EXCLUSIVAMENTE las facturas originales de la mañana
+                Object.keys(baseline).forEach(nombreAsesor => {
+                    const nombreAsesorUpper = nombreAsesor.toUpperCase().replace(/\*/g, '').trim();
+                    if (nombreAsesorUpper === "SIN VENDEDOR" || nombreAsesorUpper === "SIN ASESOR" || nombreAsesorUpper === "" || nombreAsesorUpper === "COMERCIALIZADORA DEL SUR FERCOSUR SAS") return;
 
-                if (nombreAsesorUpper === "SIN VENDEDOR" || nombreAsesorUpper === "SIN ASESOR" || nombreAsesorUpper === "" || nombreAsesorUpper === "COMERCIALIZADORA DEL SUR FERCOSUR SAS") return;
+                    if (!mapaRankingVend[nombreAsesor]) {
+                        mapaRankingVend[nombreAsesor] = { nombre: nombreAsesor, total: 0, vencido: 0, carteraMas30Dias: 0 };
+                        clientesPorVendedor[nombreAsesor] = new Set();
+                        clientesAlDiaPorVendedor[nombreAsesor] = new Set();
+                    }
 
-                const val = parseFloat(item.valor) || 0;
-                const clienteKey = item.nit ? item.nit.toString().trim() : (item.cliente ? item.cliente.trim() : "sin_id");
+                    const facturasBase = baseline[nombreAsesor].facturasBase || {};
+                    const estadoClientesCohort = {};
 
-                if (!mapaRankingVend[nombreAsesor]) {
-                    mapaRankingVend[nombreAsesor] = { nombre: nombreAsesor, total: 0, vencido: 0, carteraMas30Dias: 0 };
-                    clientesPorVendedor[nombreAsesor] = new Set();
-                    clientesAlDiaPorVendedor[nombreAsesor] = new Set();
-                }
+                    Object.keys(facturasBase).forEach(llaveUnicaBase => {
+                        const clienteKey = llaveUnicaBase.split('_')[0] || "sin_id";
+                        clientesPorVendedor[nombreAsesor].add(clienteKey);
 
-                mapaRankingVend[nombreAsesor].total += val;
-                if (item.diasMora > 0) mapaRankingVend[nombreAsesor].vencido += val;
-                if (item.diasMora >= 30) mapaRankingVend[nombreAsesor].carteraMas30Dias += val;
+                        if (!estadoClientesCohort[clienteKey]) {
+                            estadoClientesCohort[clienteKey] = { tieneMora: false };
+                        }
 
-                clientesPorVendedor[nombreAsesor].add(clienteKey);
-            });
+                        // Buscamos el saldo actual de la factura congelada en el archivo de la tarde
+                        const facturaActual = portfolioData.find(f => {
+                            const currentNit = String(f.nit || 'SIN_NIT').trim();
+                            const currentFact = String(f.factura || 'S/N').trim();
+                            return `${currentNit}_${currentFact}` === llaveUnicaBase;
+                        });
 
-            // Identificar qué clientes están totalmente sanos
-            const estadoGlobalClientes = {};
-            portfolioData.forEach(item => {
-                const clienteKey = item.nit ? item.nit.toString().trim() : (item.cliente ? item.cliente.trim() : "sin_id");
-                if (!estadoGlobalClientes[clienteKey]) estadoGlobalClientes[clienteKey] = { tieneMora: false };
-                if (item.diasMora > 0) estadoGlobalClientes[clienteKey].tieneMora = true;
-            });
+                        if (facturaActual) {
+                            const valActual = parseFloat(facturaActual.valor) || 0;
+                            mapaRankingVend[nombreAsesor].total += valActual;
+                            
+                            if (facturaActual.diasMora > 0) {
+                                mapaRankingVend[nombreAsesor].vencido += valActual;
+                                estadoClientesCohort[clienteKey].tieneMora = true;
+                            }
+                            if (facturaActual.diasMora >= 30) {
+                                mapaRankingVend[nombreAsesor].carteraMas30Dias += valActual;
+                            }
+                        } else {
+                            // Si ya no aparece, su saldo actual es $0 (Factura pagada con éxito)
+                            mapaRankingVend[nombreAsesor].total += 0;
+                        }
+                    });
 
-            portfolioData.forEach(item => {
-                const nombreAsesor = item.vendedor ? item.vendedor.trim() : "Sin Asesor";
-                const clienteKey = item.nit ? item.nit.toString().trim() : (item.cliente ? item.cliente.trim() : "sin_id");
-                if (clientesPorVendedor[nombreAsesor] && !estadoGlobalClientes[clienteKey].tieneMora) {
-                    clientesAlDiaPorVendedor[nombreAsesor].add(clienteKey);
-                }
-            });
+                    // Calculamos ferreterías de la cohorte que quedaron 100% al día
+                    Object.keys(estadoClientesCohort).forEach(cliKey => {
+                        if (!estadoClientesCohort[cliKey].tieneMora) {
+                            clientesAlDiaPorVendedor[nombreAsesor].add(cliKey);
+                        }
+                    });
+                });
+            } else {
+                // FALLBACK RESTRINGIDO: Si no hay foto base, evalúa la foto actual estática (comportamiento por defecto)
+                portfolioData.forEach(item => {
+                    const nombreAsesor = item.vendedor ? item.vendedor.trim() : "Sin Asesor";
+                    const nombreAsesorUpper = nombreAsesor.toUpperCase().replace(/\*/g, '').trim();
 
-            // Recuperar Base para cruce de Recaudo Real
-            const savedBaseline = localStorage.getItem('fercosur_cartera_base');
-            const baseline = savedBaseline ? JSON.parse(savedBaseline) : null;
+                    if (nombreAsesorUpper === "SIN VENDEDOR" || nombreAsesorUpper === "SIN ASESOR" || nombreAsesorUpper === "" || nombreAsesorUpper === "COMERCIALIZADORA DEL SUR FERCOSUR SAS") return;
 
-            const listaRankeada = Object.values(mapaRankingVend).map(v => {
+                    const val = parseFloat(item.valor) || 0;
+                    const clienteKey = item.nit ? item.nit.toString().trim() : (item.cliente ? item.cliente.trim() : "sin_id");
+
+                    if (!mapaRankingVend[nombreAsesor]) {
+                        mapaRankingVend[nombreAsesor] = { nombre: nombreAsesor, total: 0, vencido: 0, carteraMas30Dias: 0 };
+                        clientesPorVendedor[nombreAsesor] = new Set();
+                        clientesAlDiaPorVendedor[nombreAsesor] = new Set();
+                    }
+
+                    mapaRankingVend[nombreAsesor].total += val;
+                    if (item.diasMora > 0) mapaRankingVend[nombreAsesor].vencido += val;
+                    if (item.diasMora >= 30) mapaRankingVend[nombreAsesor].carteraMas30Dias += val;
+
+                    clientesPorVendedor[nombreAsesor].add(clienteKey);
+                });
+
+                const estadoGlobalClientes = {};
+                portfolioData.forEach(item => {
+                    const clienteKey = item.nit ? item.nit.toString().trim() : (item.cliente ? item.cliente.trim() : "sin_id");
+                    if (!estadoGlobalClientes[clienteKey]) estadoGlobalClientes[clienteKey] = { tieneMora: false };
+                    if (item.diasMora > 0) estadoGlobalClientes[clienteKey].tieneMora = true;
+                });
+
+                portfolioData.forEach(item => {
+                    const nombreAsesor = item.vendedor ? item.vendedor.trim() : "Sin Asesor";
+                    const clienteKey = item.nit ? item.nit.toString().trim() : (item.cliente ? item.cliente.trim() : "sin_id");
+                    if (clientesPorVendedor[nombreAsesor] && !estadoGlobalClientes[clienteKey].tieneMora) {
+                        clientesAlDiaPorVendedor[nombreAsesor].add(clienteKey);
+                    }
+                });
+            }
+
+            // Procesamos la lista final cruzando los datos puros de la cohorte
+            const listaRankeada = Object.keys(mapaRankingVend).map(nombreAsesor => {
+                const v = mapaRankingVend[nombreAsesor];
+                
                 // 1. CUMPLIMIENTO DE CUOTA DINÁMICA (40 Puntos)
                 let recaudoReal = 0;
                 let metaCuota = 1; 
@@ -907,10 +965,9 @@
                     metaCuota = baseline[v.nombre].cuota || 1;
                     const facturasBase = baseline[v.nombre].facturasBase;
                     
-                   Object.keys(facturasBase).forEach(llaveUnicaBase => {
+                    Object.keys(facturasBase).forEach(llaveUnicaBase => {
                         const valorBase = facturasBase[llaveUnicaBase];
                         
-                        // Buscamos la factura usando la misma lógica de llave compuesta súper segura
                         const facturaActual = portfolioData.find(f => {
                             const currentNit = String(f.nit || 'SIN_NIT').trim();
                             const currentFact = String(f.factura || 'S/N').trim();
@@ -918,27 +975,29 @@
                         });
                         
                         if (!facturaActual) {
-                            recaudoReal += valorBase; // Documento pagado 100% (No se encontró en el nuevo Excel)
+                            recaudoReal += valorBase; 
                         } else {
                             const valorActual = parseFloat(facturaActual.valor) || 0;
-                            if (valorBase > valorActual) recaudoReal += (valorBase - valorActual); // Abono parcial
+                            if (valorBase > valorActual) recaudoReal += (valorBase - valorActual); 
                         }
                     });
                 }
                 
                 let ptjeCuota = (recaudoReal / metaCuota) * 40;
                 if (ptjeCuota > 40) ptjeCuota = 40; 
-                if (!baseline) ptjeCuota = 0; // Si no hay foto base, arranca de 0
+                if (!baseline) ptjeCuota = 0; 
 
                 // 2. CONTROL DE MORA (25 Puntos)
-                const totalMonto = v.total || 1;
-                const morosidadPct = (v.vencido / totalMonto);
+                const totalMonto = v.total || 0;
+                const totalVencidoAsesor = v.vencido || 0;
+                const morosidadPct = totalMonto > 0 ? (totalVencidoAsesor / totalMonto) : 0;
                 let ptjeMora = (1 - morosidadPct) * 25;
                 if (ptjeMora < 0) ptjeMora = 0;
+                if (totalMonto === 0 && baseline && baseline[v.nombre]) ptjeMora = 25; // Si ya cobró todo lo viejo, tiene puntuación perfecta
 
                 // 3. FACTURAS VIEJAS (20 Puntos)
                 let porcentajeViejas = 0;
-                if (v.vencido > 0) porcentajeViejas = (v.carteraMas30Dias / v.vencido);
+                if (totalVencidoAsesor > 0) porcentajeViejas = (v.carteraMas30Dias / totalVencidoAsesor);
                 let ptjeViejas = (1 - porcentajeViejas) * 20;
 
                 // 4. CLIENTES SANOS (15 Puntos)
@@ -950,7 +1009,7 @@
 
                 return {
                     nombre: v.nombre,
-                    sana: v.total - v.vencido,
+                    sana: totalMonto - totalVencidoAsesor,
                     morosidad: morosidadPct * 100,
                     recaudoReal: recaudoReal,
                     meta: metaCuota === 1 ? 0 : metaCuota,
