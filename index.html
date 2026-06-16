@@ -132,9 +132,9 @@
                 </div>
             </div>
             
-            <!-- Estado de conexión Firebase -->
+            <!-- NUEVO: Botón de Acceso Administrativo y Conexión Nube -->
             <div class="flex flex-wrap items-center gap-3">
-                <button onclick="openAdminModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-full text-xs font-bold shadow-md transition-all flex items-center gap-1.5">
+                <button id="header-admin-btn" onclick="openAdminModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-full text-xs font-bold shadow-md transition-all flex items-center gap-1.5">
                     <i class="fa-solid fa-user-shield"></i> Acceso Admin
                 </button>
                 
@@ -349,7 +349,7 @@
                             <span>Ver Ranking</span>
                         </button>
 
-                        <button onclick="document.getElementById('excel-file').click()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl flex items-center justify-center gap-2 text-xs font-bold shadow-sm transition-all w-full sm:w-auto" title="Subir nuevo reporte diario Excel">
+                      <button id="btn-cargar-excel" onclick="document.getElementById('excel-file').click()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl flex items-center justify-center gap-2 text-xs font-bold shadow-sm transition-all w-full sm:w-auto" title="Subir nuevo reporte diario Excel">
                             <i class="fa-solid fa-file-excel text-base"></i>
                             <span>Cargar Excel</span>
                         </button>
@@ -437,6 +437,13 @@
                     </div>
                 </div>
             </section>
+            
+            <!-- NUEVO: Botón de salida posicionado en la parte inferior derecha -->
+            <div class="flex justify-end mt-4 pr-2">
+                <button onclick="logout()" class="bg-rose-600 hover:bg-rose-700 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 text-xs font-bold shadow-lg shadow-rose-600/10 hover:shadow-rose-700/20 transition-all transform hover:-translate-y-0.5">
+                    <i class="fa-solid fa-right-from-bracket"></i> Cerrar Sesión Activa
+                </button>
+            </div>
         </div>
     </main>
 
@@ -697,7 +704,7 @@
                 }
             });
 
-            // Reconstruir selector de vendedores para filtro
+           // Reconstruir selector de vendedores para filtro
             const selectVendors = document.getElementById('vendedor-select');
             selectVendors.innerHTML = '<option value="todos">Todos los Vendedores</option>';
             Array.from(vendorsList).sort().forEach(vendor => {
@@ -707,24 +714,30 @@
                 selectVendors.appendChild(opt);
             });
 
-            // NUEVO: Control de privacidad y bloqueo de filtros según el usuario activo
+            // NUEVO: Control de visualización y restricciones avanzadas por rol
             const rankingBtn = document.querySelector("button[onclick='toggleRankingPanel()']");
+            const excelBtn = document.getElementById('btn-cargar-excel');
+            const headerAdminBtn = document.getElementById('header-admin-btn');
+
+            // Regala 1: Ocultar el botón superior de administración cuando un usuario ya está dentro del sistema
+            if (headerAdminBtn) headerAdminBtn.classList.add('hidden');
+
             if (currentUserRole === 'vendedor') {
-                // Forzar a que el buscador se fije en su propio nombre y bloquear el menú para que no pueda alterarlo
                 selectVendors.value = currentUserVendor;
                 selectVendors.disabled = true;
                 
-                // Forzar la actualización del menú de ciudades basado en su zona asignada
                 if (typeof updatePoblacionDropdown === 'function') {
                     updatePoblacionDropdown();
                 }
                 
-                // Ocultar por completo el botón del Trofeo (Ranking Global)
                 if (rankingBtn) rankingBtn.classList.add('hidden');
+                
+                // Regla 3: El botón de cargar excel se oculta por completo si no es administrador
+                if (excelBtn) excelBtn.classList.add('hidden');
             } else {
-                // Si eres administrador, dejar el menú libre y mostrar el ranking completo con normalidad
                 selectVendors.disabled = false;
                 if (rankingBtn) rankingBtn.classList.remove('hidden');
+                if (excelBtn) excelBtn.classList.remove('hidden');
             }
 
             applyFilters();
@@ -1984,6 +1997,33 @@
                 passwordInput.focus();
                 showToast("Contraseña incorrecta. Inténtelo de nuevo.", "error");
             }
+        };
+        // NUEVO: Función para restablecer el sistema y volver a la pantalla de bienvenida
+        window.logout = function() {
+            // Limpiar roles y rastros en memoria
+            currentUserRole = 'vendedor';
+            currentUserVendor = '';
+            
+            // Vaciar campos de formularios de entrada por seguridad
+            document.getElementById('vendor-password-input').value = '';
+            document.getElementById('global-password-input').value = '';
+            document.getElementById('login-vendor-select').value = '';
+            
+            // Alternar pantallas de la interfaz
+            document.getElementById('main-content').classList.add('hidden');
+            document.getElementById('password-screen').classList.remove('hidden');
+            document.getElementById('vendor-login-box').classList.remove('hidden');
+            document.getElementById('admin-login-box').classList.add('hidden');
+            
+            // Volver a mostrar el botón administrativo del encabezado para el siguiente inicio
+            const headerAdminBtn = document.getElementById('header-admin-btn');
+            if (headerAdminBtn) headerAdminBtn.classList.remove('hidden');
+            
+            // Autoenfoque inicial
+            const vendorSelect = document.getElementById('login-vendor-select');
+            if (vendorSelect) vendorSelect.focus();
+            
+            showToast("Sesión cerrada correctamente.", "info");
         };
 
         // Interceptores del arranque nativo ajustados al sistema multiusuario
