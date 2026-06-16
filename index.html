@@ -34,22 +34,26 @@
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
 
-   <div id="password-screen" class="fixed inset-0 z-50 bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 flex items-center justify-center p-4 backdrop-blur-md">
+   
+
+    <div id="password-screen" class="fixed inset-0 z-50 bg-gradient-to-tr from-slate-950 via-slate-900 to-emerald-950 flex items-center justify-center p-4 backdrop-blur-lg">
         
-        <div id="vendor-login-box" class="bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-md w-full p-8 flex flex-col items-center gap-6 animate-in fade-in zoom-in-95 duration-300">
-            <div class="h-16 w-16 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center shadow-inner">
-                <i class="fa-solid fa-users text-2xl"></i>
-            </div>
-            <div class="text-center flex flex-col gap-1">
-                <h2 class="text-xl font-black text-slate-900 tracking-tight">¡Bienvenido a Fercosur!</h2>
-                <p class="text-xs text-slate-400 font-medium">Seleccione su zona comercial e ingrese su contraseña.</p>
+        <div id="vendor-login-box" class="bg-white/95 rounded-3xl shadow-[0_25px_60px_-15px_rgba(16,185,129,0.2)] border-2 border-emerald-500/10 max-w-lg w-full p-10 flex flex-col items-center gap-8 animate-in fade-in zoom-in-95 duration-300 backdrop-blur-md">
+            
+            <div class="h-20 w-20 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center shadow-md border border-emerald-100 animate-pulse">
+                <i class="fa-solid fa-users text-3xl"></i>
             </div>
             
-            <div class="w-full flex flex-col gap-4">
+            <div class="text-center flex flex-col gap-2">
+                <h2 class="text-2xl font-black text-slate-900 tracking-tight sm:text-3xl">¡Bienvenido a Fercosur!</h2>
+                <p class="text-xs sm:text-sm text-slate-500 font-medium max-w-xs mx-auto">Selecciona tu zona comercial de la lista e ingresa tu contraseña de acceso.</p>
+            </div>
+            
+            <div class="w-full flex flex-col gap-5">
                 <div class="relative w-full">
-                    <i class="fa-solid fa-user-tie absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-                    <select id="login-vendor-select" class="w-full pl-10 pr-8 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-slate-700 font-bold cursor-pointer appearance-none">
-                        <option value="" disabled selected>Seleccione su nombre de la lista...</option>
+                    <i class="fa-solid fa-user-tie absolute left-4 top-1/2 -translate-y-1/2 text-emerald-600 text-sm"></i>
+                    <select id="login-vendor-select" class="w-full pl-11 pr-10 py-4 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all text-slate-700 font-bold cursor-pointer appearance-none">
+                        <option value="" disabled selected>Selecciona tu nombre de la lista aquí...</option>
                         <option value="FS CAUCA FABIAN JIMENEZ">FS CAUCA FABIAN JIMENEZ</option>
                         <option value="FS IPIALES KATHERINE">FS IPIALES KATHERINE</option>
                         <option value="FS NORTE 2 DIEGO MARTINEZ">FS NORTE 2 DIEGO MARTINEZ</option>
@@ -63,46 +67,52 @@
                         <option value="FS SUR HAROLD MARTINEZ">FS SUR HAROLD MARTINEZ</option>
                         <option value="FS VIA TUMACO CRISTINA BENAVIDES">FS VIA TUMACO CRISTINA BENAVIDES</option>
                     </select>
-                    <i class="fa-solid fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-[10px] pointer-events-none"></i>
+                    <i class="fa-solid fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
                 </div>
 
                 <div class="relative w-full">
-                    <i class="fa-solid fa-key absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-                    <input type="password" id="vendor-password-input" maxlength="4" onkeydown="if(event.key === 'Enter') verifyVendorPassword()" placeholder="Contraseña de 4 dígitos..." class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all tracking-widest font-bold text-slate-700">
+                    <i class="fa-solid fa-key absolute left-4 top-1/2 -translate-y-1/2 text-emerald-600 text-sm"></i>
+                    <input type="password" id="vendor-password-input" maxlength="4" onkeydown="if(event.key === 'Enter') verifyVendorPassword()" placeholder="Contraseña de 4 dígitos..." class="w-full pl-11 pr-4 py-4 bg-slate-50 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all tracking-widest font-black text-slate-700 placeholder:tracking-normal placeholder:font-medium">
                 </div>
                 
-                <div id="vendor-password-error" class="hidden text-rose-600 font-semibold text-[11px] flex items-center gap-1 pl-1">
-                    <i class="fa-solid fa-circle-exclamation"></i> Usuario o contraseña inválida.
+                <div id="vendor-password-error" class="hidden text-rose-600 font-bold text-xs flex items-center gap-1.5 pl-1 animate-bounce">
+                    <i class="fa-solid fa-circle-exclamation"></i> Contraseña incorrecta. Inténtalo de nuevo.
                 </div>
             </div>
             
-            <button onclick="verifyVendorPassword()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md transition-all flex items-center justify-center gap-2">
-                <i class="fa-solid fa-right-to-bracket"></i> Ingresar como Asesor
-            </button>
+            <div class="w-full flex flex-col gap-3 mt-2 border-t border-slate-100 pt-5">
+                <button onclick="verifyVendorPassword()" class="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs sm:text-sm font-extrabold shadow-lg shadow-emerald-600/20 hover:shadow-emerald-700/30 transition-all flex items-center justify-center gap-2 transform hover:-translate-y-0.5">
+                    <i class="fa-solid fa-right-to-bracket text-base"></i> Ingresar al Módulo Comercial
+                </button>
+                
+                <button onclick="openAdminModal()" class="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-user-shield text-slate-500"></i> ¿Eres el Administrador? Ingresa aquí
+                </button>
+            </div>
         </div>
 
-        <div id="admin-login-box" class="hidden bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-md w-full p-8 flex flex-col items-center gap-6 animate-in fade-in zoom-in-95 duration-300">
-            <div class="h-16 w-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shadow-inner">
+        <div id="admin-login-box" class="hidden bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-md w-full p-10 flex flex-col items-center gap-6 animate-in fade-in zoom-in-95 duration-300">
+            <div class="h-16 w-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shadow-md border border-indigo-100">
                 <i class="fa-solid fa-user-shield text-2xl"></i>
             </div>
             <div class="text-center flex flex-col gap-1">
-                <h2 class="text-xl font-black text-slate-900 tracking-tight">Acceso de Administración</h2>
-                <p class="text-xs text-slate-400 font-medium">Ingrese la clave de seguridad comercial.</p>
+                <h2 class="text-xl font-black text-slate-900 tracking-tight">Panel de Control General</h2>
+                <p class="text-xs text-slate-400 font-medium">Clave maestra de autorización comercial.</p>
             </div>
             <div class="w-full flex flex-col gap-3">
                 <div class="relative w-full">
-                    <i class="fa-solid fa-key absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-                    <input type="password" id="global-password-input" onkeydown="if(event.key === 'Enter') verifyGlobalPassword()" placeholder="Escriba la clave maestra aquí..." class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all tracking-wide text-slate-700">
+                    <i class="fa-solid fa-key absolute left-4 top-1/2 -translate-y-1/2 text-indigo-600 text-xs"></i>
+                    <input type="password" id="global-password-input" onkeydown="if(event.key === 'Enter') verifyGlobalPassword()" placeholder="Escriba la clave maestra aquí..." class="w-full pl-10 pr-4 py-3.5 bg-slate-50 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all tracking-wide text-slate-700 font-semibold">
                 </div>
-                <div id="password-error-msg" class="hidden text-rose-600 font-semibold text-[11px] flex items-center gap-1 pl-1">
-                    <i class="fa-solid fa-circle-exclamation"></i> Clave incorrecta.
+                <div id="password-error-msg" class="hidden text-rose-600 font-bold text-xs flex items-center gap-1 pl-1 animate-bounce">
+                    <i class="fa-solid fa-circle-exclamation"></i> Clave maestra incorrecta.
                 </div>
             </div>
-            <div class="flex gap-3 w-full">
+            <div class="flex gap-3 w-full mt-2">
                 <button onclick="closeAdminModal()" class="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold transition-all">
                     Volver
                 </button>
-                <button onclick="verifyGlobalPassword()" class="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md transition-all flex items-center justify-center gap-2">
+                <button onclick="verifyGlobalPassword()" class="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-lg shadow-indigo-600/20 transition-all flex items-center justify-center gap-2">
                     <i class="fa-solid fa-shield-checkmark"></i> Verificar
                 </button>
             </div>
@@ -1896,16 +1906,33 @@
             "FS VIA TUMACO CRISTINA BENAVIDES": "1012"
         };
 
-        // Funciones de control visual para las ventanas de login
+       // NUEVO: Funciones con reparación de bloqueo de contenedor padre
         window.openAdminModal = function() {
+            // Forzar a que la pantalla completa de login vuelva a aparecer si estaba oculta
+            document.getElementById('password-screen').classList.remove('hidden');
+            
+            // Intercambiar las cajas internas
             document.getElementById('vendor-login-box').classList.add('hidden');
             document.getElementById('admin-login-box').classList.remove('hidden');
-            setTimeout(() => { document.getElementById('global-password-input').focus(); }, 50);
+            
+            // Autoenfoque en el input
+            setTimeout(() => { 
+                const adminInput = document.getElementById('global-password-input');
+                if(adminInput) {
+                    adminInput.value = "";
+                    adminInput.focus(); 
+                }
+            }, 50);
         };
 
         window.closeAdminModal = function() {
             document.getElementById('admin-login-box').classList.add('hidden');
             document.getElementById('vendor-login-box').classList.remove('hidden');
+            
+            // Si el rol ya era admin, al cerrar el modal es porque quiere volver a la app, si no, se queda el login de vendedores
+            if (currentUserRole === 'admin') {
+                document.getElementById('password-screen').classList.add('hidden');
+            }
         };
 
         // Verificación de clave para Administrador
