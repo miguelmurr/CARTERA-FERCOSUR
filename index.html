@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cartera Fercosur</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#091e3a">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js" crossorigin="anonymous"></script>
@@ -2026,11 +2028,18 @@
             showToast("Sesión cerrada correctamente.", "info");
         };
 
-        // Interceptores del arranque nativo ajustados al sistema multiusuario
+        // Interceptores del arranque nativo ajustados al sistema multiusuario y activador PWA
         window.onload = function() {
             const vendorSelect = document.getElementById('login-vendor-select');
             if (vendorSelect) {
                 vendorSelect.focus();
+            }
+
+            // NUEVO: Registrador del cerebro de fondo para habilitar la instalación en celulares
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('sw.js')
+                    .then(function() { console.log("Motor de instalación PWA: Activo"); })
+                    .catch(function(error) { console.log("Error al activar PWA: ", error); });
             }
         };
 
