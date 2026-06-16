@@ -851,7 +851,7 @@
                 }
             });
 
-          // 5. COMPILACIÓN MATEMÁTICA DEL ESCALAFÓN DE ASESORES (MOTOR DE COBROS E INDICADORES EN VIVO CON TENDENCIAS)
+          // 5. COMPILACIÓN MATEMÁTICA DEL ESCALAFÓN DE ASESORES (MOTOR DE COBROS E INDICADORES EN VIVO CON TENDENCIAS OPCIÓN 1)
             const savedBaseline = localStorage.getItem('fercosur_cartera_base');
             const baseline = savedBaseline ? JSON.parse(savedBaseline) : null;
 
@@ -859,6 +859,7 @@
             const clientesPorVendedor = {};
             const clientesAlDiaPorVendedor = {};
 
+            // 1. Recopilar datos vivos del archivo actual
             portfolioData.forEach(item => {
                 const nombreAsesor = item.vendedor ? item.vendedor.trim() : "Sin Asesor";
                 const nombreAsesorUpper = nombreAsesor.toUpperCase().replace(/\*/g, '').trim();
@@ -881,6 +882,7 @@
                 clientesPorVendedor[nombreAsesor].add(clienteKey);
             });
 
+            // Identificar clientes sanos globales
             const estadoGlobalClientes = {};
             portfolioData.forEach(item => {
                 const clienteKey = item.nit ? item.nit.toString().trim() : (item.cliente ? item.cliente.trim() : "sin_id");
@@ -896,17 +898,18 @@
                 }
             });
 
+            // 2. Compilar métricas, puntajes y tendencias
             const listaRankeada = Object.values(mapaRankingVend).map(v => {
                 let recaudoReal = 0;
                 let metaCuota = 1; 
                 
+                // Recaudo Progresivo: Inicia en 0 al marcar foto base, sube con los cobros diarios
                 if (baseline && baseline[v.nombre]) {
                     metaCuota = baseline[v.nombre].cuota || 1;
                     const facturasBase = baseline[v.nombre].facturasBase;
                     
                     Object.keys(facturasBase).forEach(llaveUnicaBase => {
                         const valorBase = facturasBase[llaveUnicaBase];
-                        
                         const facturaActual = portfolioData.find(f => {
                             const currentNit = String(f.nit || 'SIN_NIT').trim();
                             const currentFact = String(f.factura || 'S/N').trim();
@@ -926,6 +929,7 @@
                 if (ptjeCuota > 40) ptjeCuota = 40; 
                 if (!baseline) ptjeCuota = 0; 
 
+                // Porcentajes en Vivo (Opción 1)
                 const totalMonto = v.total || 1;
                 const morosidadPctCurrent = (v.vencido / totalMonto) * 100;
                 const flujoSanoPctCurrent = ((v.total - v.vencido) / totalMonto) * 100;
@@ -943,7 +947,7 @@
 
                 const puntajeFinal = ptjeCuota + ptjeMora + ptjeViejas + ptjeSanos;
 
-                // CÁLCULO DE TENDENCIAS EN BASE A LA FOTO BASE CONGELADA
+                // TENDENCIAS (Variación Real Viva)
                 let htmlTendenciaMora = "";
                 let htmlTendenciaSano = "";
 
@@ -954,18 +958,22 @@
                     const diffMora = morosidadPctCurrent - originalMora;
                     const diffSano = flujoSanoPctCurrent - originalSano;
 
-                    // Tendencia Mora: Bajar es bueno (Verde), Subir es malo (Rojo)
+                    // Mora: Subir = Malo (Rojo), Bajar = Bueno (Verde)
                     if (diffMora > 0.005) {
-                        htmlTendenciaMora = `<span class="text-rose-600 font-extrabold text-[10px] ml-1.5" title="Mora subió">▲ ${diffMora.toFixed(2)}%</span>`;
+                        htmlTendenciaMora = `<span class="text-rose-600 font-extrabold text-[10px] ml-1.5" title="Mora subió respecto a la base">▲ ${diffMora.toFixed(2)}%</span>`;
                     } else if (diffMora < -0.005) {
-                        htmlTendenciaMora = `<span class="text-emerald-600 font-extrabold text-[10px] ml-1.5" title="Mora bajó">▼ ${Math.abs(diffMora).toFixed(2)}%</span>`;
+                        htmlTendenciaMora = `<span class="text-emerald-600 font-extrabold text-[10px] ml-1.5" title="Mora bajó respecto a la base">▼ ${Math.abs(diffMora).toFixed(2)}%</span>`;
+                    } else {
+                        htmlTendenciaMora = `<span class="text-slate-400 font-bold text-[10px] ml-1.5" title="Sin variación">═ 0.00%</span>`;
                     }
 
-                    // Tendencia Sano: Subir es bueno (Verde), Bajar es malo (Rojo)
+                    // Flujo Sano: Subir = Bueno (Verde), Bajar = Malo (Rojo)
                     if (diffSano > 0.005) {
-                        htmlTendenciaSano = `<span class="text-emerald-600 font-extrabold text-[10px] ml-1.5" title="Salud subió">▲ ${diffSano.toFixed(2)}%</span>`;
+                        htmlTendenciaSano = `<span class="text-emerald-600 font-extrabold text-[10px] ml-1.5" title="Salud subió respecto a la base">▲ ${diffSano.toFixed(2)}%</span>`;
                     } else if (diffSano < -0.005) {
-                        htmlTendenciaSano = `<span class="text-rose-600 font-extrabold text-[10px] ml-1.5" title="Salud bajó">▼ ${Math.abs(diffSano).toFixed(2)}%</span>`;
+                        htmlTendenciaSano = `<span class="text-rose-600 font-extrabold text-[10px] ml-1.5" title="Salud bajó respecto a la base">▼ ${Math.abs(diffSano).toFixed(2)}%</span>`;
+                    } else {
+                        htmlTendenciaSano = `<span class="text-slate-400 font-bold text-[10px] ml-1.5" title="Sin variación">═ 0.00%</span>`;
                     }
                 }
 
@@ -982,10 +990,9 @@
                 };
             });
 
-            // Ordenamiento estricto
+            // 3. Renderizado y HTML
             listaRankeada.sort((a, b) => b.puntaje - a.puntaje);
 
-            // Inyección en HTML con popups interactivos
             const rankingBody = document.getElementById('ranking-vendedores-body');
             if (rankingBody) {
                 rankingBody.innerHTML = '';
@@ -1026,7 +1033,7 @@
                                 <span class="text-emerald-600 font-bold text-xs">${formatCurrency(vendedor.recaudoReal)}</span>
                             </td>
                             <td class="py-2.5 px-4 text-center font-semibold text-slate-600 whitespace-nowrap">
-                                <span>${vendedor.morosidad.toFixed(1)}%</span>
+                                <span>${vendedor.morosidad.toFixed(2)}%</span>
                                 ${vendedor.moraTrendHTML}
                             </td>
                             <td class="py-2.5 px-4 text-right relative font-bold text-slate-700 whitespace-nowrap">
@@ -1039,10 +1046,9 @@
                                     ${vendedor.sanoTrendHTML}
                                 </div>
                                 
-                                <!-- Cuadro Flotante Independiente Cerrable -->
                                 <div id="popup-sana-${index}" class="popup-sana-clase hidden absolute right-2 top-8 z-50 bg-slate-900 text-white font-medium text-[11px] px-3 py-2 rounded-xl shadow-xl flex items-center gap-2 border border-slate-700">
-                                    <span>Saldo COP: <strong class="text-emerald-400">${formatCurrency(vendedor.sanaCOP)}</strong></span>
-                                    <button onclick="event.stopPropagation(); document.getElementById('popup-sana-${index}').classList.add('hidden')" class="text-slate-400 hover:text-white ml-2 font-bold text-xs">×</button>
+                                    <span>Saldo Real: <strong class="text-emerald-400">${formatCurrency(vendedor.sanaCOP)}</strong></span>
+                                    <button onclick="event.stopPropagation(); document.getElementById('popup-sana-${index}').classList.add('hidden')" class="text-slate-400 hover:text-white ml-2 font-bold text-xs leading-none">×</button>
                                 </div>
                             </td>
                             <td class="py-2.5 px-4 text-center">
